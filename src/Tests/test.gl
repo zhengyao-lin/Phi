@@ -1,0 +1,54 @@
+extern int printf(string str, ...);
+extern void *malloc(Int64 size);
+extern void free(void *ptr);
+
+delegate int printf_t(string str, ...);
+
+typedef struct TT_tag {
+	int i;
+	int p;
+	struct TT_tag *o;
+} TT;
+
+typedef struct ChainTable_tag {
+	int Data;
+	struct ChainTable_tag *next;
+} ChainTable;
+
+int main()
+{
+	ChainTable header;
+	ChainTable *next;
+
+	header.Data = 10;
+	next = malloc(sizeof(ChainTable));
+	next->Data = 110;
+	header.next = next;
+	printf("%d\n", header.next->Data);
+	
+	string str1 = "hello, world\n";
+	printf(str1);
+
+	int i1 = 1;
+	int i2 = (i1 + 2) * 3;
+	printf("%d\n", i2);
+
+	int **pi1 = malloc(8);
+	//*pi1 = malloc(8);
+	&pi1 = &i1;
+
+	printf("%d\n", *pi1);
+	//printf("calling!\n");
+
+	Int64 i64 = 10;
+
+	printf_t pt1 = printf;
+	pt1("call!\n");
+
+	int i3 = *&*&i1;
+	printf("%d\n", i3);
+
+	free(next);
+
+	return 0;
+}

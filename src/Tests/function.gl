@@ -1,0 +1,59 @@
+extern int printf(char *str, ...);
+extern void memset(void *ptr, int value, int:64 size);
+
+int test(char *str) { return 0; }
+
+typedef struct VM_tag {
+	int i;
+	char *msg;
+} VM;
+
+struct s {
+	int i, a[10] = "hi";
+};
+
+union us {
+	int i;
+	double y;
+};
+
+int callee();
+
+int main()
+{
+	extern void *malloc(int:64 size);
+
+	int i = 2;
+	int array[10 + 3 - 2 - 1 * 109 / (100 + 9) + sizeof(int)];
+	array[i] = 3;
+	typeof(array) array2 = array;
+
+	int i = sizeof(typeof(array2));
+	printf("%d\n", array2[2]);
+
+	printf("%lld\n", sizeof(int) << sizeof(double));
+	printf("%d\n", sizeof(typeof(2.0)));
+
+	int *arrayP = &array[1];
+	printf("%d\n", arrayP[1]);
+
+	struct s p;
+
+	//memset(&p, 2, sizeof(typeof(p)));
+	printf("%d\n", sizeof(int));
+
+	VM p;
+
+	union us usss;
+
+	usss.y = 101.0;
+	printf("%d\n", sizeof(union us));
+	callee();
+
+	return 0;
+}
+
+int callee()
+{
+	return 10;
+}
