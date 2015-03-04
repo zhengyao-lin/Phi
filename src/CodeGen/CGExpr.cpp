@@ -81,7 +81,8 @@ NMethodCall::codeGen(CodeGenContext& context)
 		context.currentBitWidth = 0;
 
 		args.push_back(NAssignmentExpr::doAssignCast(context, arg_tmp,
-													 argType, nullptr));
+													 argType, nullptr,
+													 dyn_cast<NExpression>(this)->line_number));
 	}
 
 	call = CallInst::Create(func_value, makeArrayRef(args), "", context.currentBlock());
@@ -158,6 +159,21 @@ NBinaryExpr::codeGen(CodeGenContext& context)
 
 	doBinaryCast(context, lop, rop);
 
+	switch (op) {
+		case TLOR:
+			return context.builder->CreateOr(context.builder->CreateICmpNE(lop, context.builder->getFalse(), ""),
+											  context.builder->CreateICmpNE(rop, context.builder->getFalse(), ""), "");
+		case TLAND:
+			return context.builder->CreateAnd(context.builder->CreateICmpNE(lop, context.builder->getFalse(), ""),
+											   context.builder->CreateICmpNE(rop, context.builder->getFalse(), ""), "");
+		case TOR:
+			return context.builder->CreateOr(lop, rop, "");	
+		case TXOR:
+			return context.builder->CreateXor(lop, rop, "");	
+		case TAND:
+			return context.builder->CreateAnd(lop, rop, "");
+	}
+
 	if (lop->getType()->isFloatingPointTy() && rop->getType()->isFloatingPointTy()) {
 		switch (op) {
 			case TADD: 		return context.builder->CreateFAdd(lop, rop, "");
@@ -171,6 +187,12 @@ NBinaryExpr::codeGen(CodeGenContext& context)
 				CGERR_setLineNum(context, dyn_cast<NExpression>(this)->line_number);
 				CGERR_showAllMsg(context);
 				break;
+			case TCEQ:		return context.builder->CreateFCmpOEQ(lop, rop, "");
+			case TCNE:		return context.builder->CreateFCmpONE(lop, rop, "");
+			case TCLT:		return context.builder->CreateFCmpOLT(lop, rop, "");
+			case TCGT:		return context.builder->CreateFCmpOGT(lop, rop, "");
+			case TCLE:		return context.builder->CreateFCmpOLE(lop, rop, "");
+			case TCGE:		return context.builder->CreateFCmpOGE(lop, rop, "");
 		}
 	} else if (lop->getType()->isIntegerTy() && rop->getType()->isIntegerTy()) {
 		switch (op) {
@@ -179,13 +201,15 @@ NBinaryExpr::codeGen(CodeGenContext& context)
 			case TMUL: 		return context.builder->CreateMul(lop, rop, "");
 			case TDIV: 		return context.builder->CreateSDiv(lop, rop, "");
 			case TMOD: 		return context.builder->CreateSRem(lop, rop, "");
-			case TAND:		return context.builder->CreateAnd(lop, rop, "");
 			case TSHL:		return context.builder->CreateShl(lop, rop, "");
 			case TSHR:
-				if (isBooleanTy(lop->getType())) {
-					return context.builder->CreateLShr(lop, rop, "");
-				}
 				return context.builder->CreateAShr(lop, rop, "");
+			case TCEQ:		return context.builder->CreateICmpEQ(lop, rop, "");
+			case TCNE:		return context.builder->CreateICmpNE(lop, rop, "");
+			case TCLT:		return context.builder->CreateICmpSLT(lop, rop, "");
+			case TCGT:		return context.builder->CreateICmpSGT(lop, rop, "");
+			case TCLE:		return context.builder->CreateICmpSLE(lop, rop, "");
+			case TCGE:		return context.builder->CreateICmpSGE(lop, rop, "");
 		}
 	}
 
@@ -199,20 +223,22 @@ Value *
 NPrefixExpr::codeGen(CodeGenContext& context)
 {
 	Instruction::BinaryOps instr;
+	LoadInst *loader;
 	Value *V;
 	Type *T;
 
 	V = operand.codeGen(context);
 
 	if (op == TMUL) {
-		return new LoadInst(V->stripPointerCasts(), "",
-							 false, context.currentBlock());
+		return new LoadInst(V, "", false,
+							 context.currentBlock());
 	} else if (op == TAND) {
 		if (context.isLValue()) {
 			return V;
 		} else {
-			if (dyn_cast<LoadInst>(V)) {
-				return dyn_cast<LoadInst>(V)->getPointerOperand();
+			if (loader = dyn_cast<LoadInst>(V)) {
+				loader->removeFromParent();
+				return loader->getPointerOperand();
 			} else {
 				CGERR_Get_Non_Resident_Value_Address(context);
 				CGERR_setLineNum(context, dyn_cast<NExpression>(this)->line_number);
@@ -221,7 +247,8 @@ NPrefixExpr::codeGen(CodeGenContext& context)
 		}
 	} else if (op == -1) {
 		return NAssignmentExpr::doAssignCast(context, V,
-											  type.getType(context), nullptr);
+											  type.getType(context), nullptr,
+											  dyn_cast<NExpression>(this)->line_number);
 	} else if (op == TSIZEOF) {
 		T = type.getType(context);
 		if (!T->isVoidTy()) {
@@ -276,11 +303,91 @@ NPrefixExpr::codeGen(CodeGenContext& context)
 
 #define NUM_MIN(a, b) (a < b ? a : b)
 
+template <typename T>
+T getConstantArrayElementCastTo(ConstantDataSequential *CA, int i)
+{
+	if (CA->getElementType()->isIntegerTy()) {
+		return CA->getElementAsInteger(i);
+	} else if (CA->getElementType()->isFloatingPointTy()) {
+		return CA->getElementAsDouble(i);
+	}
+
+	return 0;
+}
+
+static Constant *
+doAlignArray(CodeGenContext& context, Constant *array, Type *dest_type,
+			 uint64_t size, int line_number)
+{
+	unsigned i;
+	ConstantDataSequential *CA = dyn_cast<ConstantDataSequential>(array);
+
+	switch (dest_type->getTypeID()) {
+		case Type::IntegerTyID:
+			switch (getBitWidth(dest_type)) {
+				case 8: {
+					vector<uint8_t> CT;
+					for (i = 0; i < size; i++) {
+						CT.push_back(getConstantArrayElementCastTo<int>(CA, i));
+					}
+					return ConstantDataArray::get(getGlobalContext(), makeArrayRef(CT));
+				}
+				case 16: {
+					vector<uint16_t> CT;
+					for (i = 0; i < size; i++) {
+						CT.push_back(getConstantArrayElementCastTo<int>(CA, i));
+					}
+					return ConstantDataArray::get(getGlobalContext(), makeArrayRef(CT));
+				}
+				case 32: {
+					vector<uint32_t> CT;
+					for (i = 0; i < size; i++) {
+						CT.push_back(getConstantArrayElementCastTo<int>(CA, i));
+					}
+					return ConstantDataArray::get(getGlobalContext(), makeArrayRef(CT));
+				}
+				case 64: {
+					vector<uint64_t> CT;
+					for (i = 0; i < size; i++) {
+						CT.push_back(getConstantArrayElementCastTo<int>(CA, i));
+					}
+					return ConstantDataArray::get(getGlobalContext(), makeArrayRef(CT));
+				}
+				default:
+					CGERR_Unsupport_Integer_Bitwidth_For_Data_Array(context);
+					CGERR_setLineNum(context, line_number);
+					CGERR_showAllMsg(context);
+					break;
+			}
+			break;
+		case Type::FloatTyID: {
+			vector<float> CT;
+			for (i = 0; i < size; i++) {
+				CT.push_back(getConstantArrayElementCastTo<float>(CA, i));
+			}
+			return ConstantDataArray::get(getGlobalContext(), makeArrayRef(CT));
+		}
+		case Type::DoubleTyID: {
+			vector<double> CT;
+			for (i = 0; i < size; i++) {
+				CT.push_back(getConstantArrayElementCastTo<double>(CA, i));
+			}
+			return ConstantDataArray::get(getGlobalContext(), makeArrayRef(CT));
+		}
+		default:
+			std::abort();
+			break;
+	}
+
+	return NULL;
+}
+
 Value *
 NAssignmentExpr::doAssignCast(CodeGenContext& context, Value *value,
-							  Type *variable_type, Value *variable)
+							  Type *variable_type, Value *variable, int line_number = -1)
 {
 	Type *value_type;
+	Value *tmp_V;
 
 	value_type = value->getType();
 
@@ -309,24 +416,39 @@ NAssignmentExpr::doAssignCast(CodeGenContext& context, Value *value,
 		} else if (value_type->isPointerTy() && variable_type->isIntegerTy()) {
 			return new PtrToIntInst(value, variable_type, "",
 									 context.currentBlock());
+		} else if (isArrayType(value_type)
+					&& isArrayType(variable_type)
+					&& !context.currentBlock()) {
+			ArrayType *VET = dyn_cast<ArrayType>(value_type);
+			ArrayType *VAET = dyn_cast<ArrayType>(variable_type);
+			if (VET->getNumElements() != VAET->getNumElements()) {
+				value = doAlignArray(context, dyn_cast<Constant>(value), VAET->getArrayElementType(),
+									 VAET->getNumElements(), line_number);
+			}
+
+			return value;
+		} else if (isArrayType(value_type)
+					&& isPointerType(variable_type)
+					&& !context.currentBlock()) {
+			return value;
 		} else if (isArrayPointerType(value_type)
 					&& isArrayPointerType(variable_type)) {
 			Type *VET = value_type->getPointerElementType();
 			Type *VAET = variable_type->getPointerElementType();
-
 			if (!variable) {
 				std::abort();
 			}
-
 			context.builder->CreateMemCpy(variable, value,
 										  getSizeOfJIT(VET),
 										  getAlignOfJIT(VET), false);
-
 			return NULL;
-		} else if (value_type->isPointerTy()
-					&& value_type->getPointerElementType()->isArrayTy()
-					&& variable_type->isPointerTy()) {
-			return context.builder->CreateConstInBoundsGEP2_32(value, 0, 0, "");
+		} else if (isArrayPointerType(value_type) && isPointerType(variable_type)) {
+			tmp_V = dyn_cast<Value>(context.builder->CreateConstInBoundsGEP1_32(value, 0, ""));
+			if (isSameType(tmp_V->getType(), variable_type)) {
+				return tmp_V;
+			}
+			return new BitCastInst(tmp_V, variable_type, "",
+									context.currentBlock());
 		} else {
 			return new BitCastInst(value, variable_type, "",
 									context.currentBlock());
@@ -366,7 +488,8 @@ NAssignmentExpr::codeGen(CodeGenContext& context)
 
 	right = NAssignmentExpr::doAssignCast(context, right,
 										  (!isArrayPointer(left) ? left->getType()->getPointerElementType()
-																 : left->getType()), left);
+																 : left->getType()), left,
+										  ((NExpression*)this)->line_number);
 
 	if (!right) {
 		return right;
@@ -384,7 +507,7 @@ NFieldExpr::codeGen(CodeGenContext& context)
 	Type *struct_type;
 	FieldMap map;
 	UnionFieldMap union_map;
-	bool is_union_flag;
+	bool is_union_flag = false;
 
 	if (context.isLValue()) {
 		struct_value = operand.codeGen(context);

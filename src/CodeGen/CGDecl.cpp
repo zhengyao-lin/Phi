@@ -38,7 +38,7 @@ setArrayType(CodeGenContext& context, Type *T, ArrayDim& array_dim, int line_num
 		 di != array_dim.end(); di++) {
 		if (*di) { // equals []
 			tmp_value = NAssignmentExpr::doAssignCast(context, (**di).codeGen(context),
-													  Type::getInt64Ty(getGlobalContext()), nullptr);
+													  Type::getInt64Ty(getGlobalContext()), nullptr, line_number);
 			if (tmp_const = dyn_cast<ConstantInt>(tmp_value)) {
 				T = ArrayType::get(T, tmp_const->getZExtValue());
 			} else {
@@ -73,8 +73,6 @@ NVariableDecl::codeGen(CodeGenContext& context)
 	}
 
 	T = specifiers->type->getType(context);
-	// T = setArrayType(context, T, array_dim, dyn_cast<NStatement>(this)->line_number);
-	// delete &array_dim;
 
 	if (context.currentBlock()) {
 		for (it = declarator_list->begin();
@@ -108,7 +106,8 @@ NVariableDecl::codeGen(CodeGenContext& context)
 			init_value = Constant::getNullValue(tmp_T);
 			if ((**it).third) {
 				if (!(init_value = dyn_cast<Constant>(NAssignmentExpr::doAssignCast(context, (**it).third->codeGen(context),
-																					tmp_T, nullptr)))) {
+																					tmp_T, nullptr,
+																					dyn_cast<NStatement>(this)->line_number)))) {
 					CGERR_External_Variable_Is_Not_Constant(context);
 					CGERR_setLineNum(context, dyn_cast<NStatement>(this)->line_number);
 					CGERR_showAllMsg(context);

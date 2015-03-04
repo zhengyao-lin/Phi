@@ -47,7 +47,7 @@
 %token <token> TLPAREN TRPAREN TLBRACE TRBRACE
 				TAND TNOT TSIZEOF TALIGNOF TTYPEOF TARROW
 			    TELLIPSIS TCOLON TSEMICOLON TCOMMA TDOT
-				TLBRAKT TRBRAKT
+				TLBRAKT TRBRAKT TLAND TLOR TOR TXOR
 %token <token> TADD TSUB TMUL TDIV TMOD TSHR TSHL
 %token <token> TRETURN TEXTERN TDELEGATE TSTRUCT TSTATIC
 				TTYPEDEF TUNION
@@ -56,8 +56,12 @@
 %type <expression> numeric string_literal expression
 					assignment_expression unary_expression primary_expression
 					postfix_expression conditional_expression additive_expression
-					multiplicative_expression cast_expression and_expression
+					multiplicative_expression cast_expression
 					shift_expression initializer_opt
+%type <expression> logical_or_expression logical_and_expression inclusive_or_expression
+					exclusive_or_expression and_expression equality_expression
+					relational_expression
+
 %type <type> type_specifier identifier_type bitfield_type struct_type union_type
 %type <variable_list> fields_declaration
 %type <param_list> function_arguments
@@ -668,9 +672,83 @@ shift_expression
 	}
 	;
 
-and_expression
+relational_expression
 	: shift_expression
-	| and_expression TAND shift_expression
+	| relational_expression TCLT shift_expression
+	{
+		$$ = new NBinaryExpr(*$1, $2, *$3);
+		SETLINE($$);
+	}
+	| relational_expression TCGT shift_expression
+	{
+		$$ = new NBinaryExpr(*$1, $2, *$3);
+		SETLINE($$);
+	}
+	| relational_expression TCLE shift_expression
+	{
+		$$ = new NBinaryExpr(*$1, $2, *$3);
+		SETLINE($$);
+	}
+	| relational_expression TCGE shift_expression
+	{
+		$$ = new NBinaryExpr(*$1, $2, *$3);
+		SETLINE($$);
+	}
+	;
+
+equality_expression
+	: relational_expression
+	| equality_expression TCEQ relational_expression
+	{
+		$$ = new NBinaryExpr(*$1, $2, *$3);
+		SETLINE($$);
+	}
+	| equality_expression TCNE relational_expression
+	{
+		$$ = new NBinaryExpr(*$1, $2, *$3);
+		SETLINE($$);
+	}
+	;
+
+and_expression
+	: equality_expression
+	| and_expression TAND equality_expression
+	{
+		$$ = new NBinaryExpr(*$1, $2, *$3);
+		SETLINE($$);
+	}
+	;
+
+exclusive_or_expression
+	: and_expression
+	| exclusive_or_expression TXOR and_expression
+	{
+		$$ = new NBinaryExpr(*$1, $2, *$3);
+		SETLINE($$);
+	}
+	;
+
+inclusive_or_expression
+	: exclusive_or_expression
+	| inclusive_or_expression TOR exclusive_or_expression
+	{
+		$$ = new NBinaryExpr(*$1, $2, *$3);
+		SETLINE($$);
+	}
+	;
+
+logical_and_expression
+	: inclusive_or_expression
+	| logical_and_expression TLAND inclusive_or_expression
+	{
+		$$ = new NBinaryExpr(*$1, $2, *$3);
+		SETLINE($$);
+	}
+	;
+
+logical_or_expression
+	: logical_and_expression
+	| logical_or_expression TLOR logical_and_expression
 	{
 		$$ = new NBinaryExpr(*$1, $2, *$3);
 		SETLINE($$);
@@ -678,7 +756,8 @@ and_expression
 	;
 
 conditional_expression
-	: and_expression
+	: logical_or_expression
+	//| logical_or_expression ? expression : conditional_expression
 	;
 
 assign_op

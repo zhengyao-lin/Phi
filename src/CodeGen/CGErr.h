@@ -211,3 +211,11 @@ CGERR_External_Variable_Is_Not_Constant(CodeGenContext& context)
 											  "Initializer of external variable is not a compiler-time constant"));
 	return;
 }
+
+inline void
+CGERR_Unsupport_Integer_Bitwidth_For_Data_Array(CodeGenContext& context)
+{
+	context.messages.newMessage(new ErrorInfo(ErrorInfo::Error, true, ErrorInfo::Exit1,
+											  "Unsupport integer bit width for data array"));
+	return;
+}

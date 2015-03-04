@@ -4,6 +4,8 @@ extern void free(void *ptr);
 
 delegate int printf_t(string str, ...);
 
+char global1[20] = "adsss";
+
 typedef struct TT_tag {
 	int i;
 	int p;
@@ -49,6 +51,8 @@ int main()
 	printf("%d\n", i3);
 
 	free(next);
+
+	printf("%s\n", global1);
 
 	return 0;
 }

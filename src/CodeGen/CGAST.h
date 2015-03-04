@@ -65,6 +65,7 @@ public:
         module = new Module("main", getGlobalContext());
 		builder = new IRBuilder<>(getGlobalContext());
 		types = initializeBasicType(*this);
+		currentBitWidth = 0;
 		resetLValue();
     }
 

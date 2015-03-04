@@ -76,10 +76,26 @@ isArrayPointerType(Type *T)
 			&& T->getPointerElementType()->getTypeID() == Type::ArrayTyID);
 }
 inline bool
+isArrayType(Type *T)
+{
+	return T->getTypeID() == Type::ArrayTyID;
+}
+inline bool
+isPointerType(Type *T)
+{
+	return T->getTypeID() == Type::PointerTyID;
+}
+inline bool
 isPointerPointer(Value *V)
 {
 	return (V->getType()->getTypeID() == Type::PointerTyID
 			&& V->getType()->getPointerElementType()->getTypeID() == Type::PointerTyID);
+}
+inline bool
+isPointerPointerType(Type *T)
+{
+	return (T->getTypeID() == Type::PointerTyID
+			&& T->getPointerElementType()->getTypeID() == Type::PointerTyID);
 }
 inline bool
 isIntegerPointer(Value *V)
@@ -98,6 +114,11 @@ isBooleanTy(Type *T)
 {
 	return (T->getTypeID() == Type::IntegerTyID
 			&& dyn_cast<IntegerType>(T)->getIntegerBitWidth() == 1);
+}
+inline unsigned
+getBitWidth(Type *T)
+{
+	return dyn_cast<IntegerType>(T)->getIntegerBitWidth();
 }
 inline bool
 isSameType(Type *T1, Type *T2)

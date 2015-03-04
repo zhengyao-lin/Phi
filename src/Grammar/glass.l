@@ -60,6 +60,12 @@ std::string* string_literal = NULL;
 <INITIAL>"{"								return TOKEN(TLBRACE);
 <INITIAL>"}"								return TOKEN(TRBRACE);
 
+<INITIAL>"&&"								return TOKEN(TLAND);
+<INITIAL>"||"								return TOKEN(TLOR);
+
+<INITIAL>"|"								return TOKEN(TOR);
+<INITIAL>"^"								return TOKEN(TXOR);
+
 <INITIAL>"..."								return TOKEN(TELLIPSIS);
 <INITIAL>":"								return TOKEN(TCOLON);
 <INITIAL>";"								return TOKEN(TSEMICOLON);

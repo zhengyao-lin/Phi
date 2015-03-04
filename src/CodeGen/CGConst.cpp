@@ -35,6 +35,13 @@ NDouble::codeGen(CodeGenContext& context)
 Value*
 NString::codeGen(CodeGenContext& context)
 {
-	StringRef ref(value.c_str());
-	return context.builder->CreateGlobalString(ref, ".str");
+	if (context.currentBlock()) {
+		return new GlobalVariable(*context.module,
+								   llvm::ArrayType::get(Type::getInt8Ty(getGlobalContext()), strlen(value.c_str()) + 1),
+								   true, GlobalValue::PrivateLinkage, 
+								   ConstantDataArray::getString(getGlobalContext(), value.c_str()),
+								   ".str");
+	}
+
+	return ConstantDataArray::getString(getGlobalContext(), value.c_str());
 }

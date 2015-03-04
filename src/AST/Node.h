@@ -278,7 +278,7 @@ public:
 	lval(lval), rval(rval) { }
 
 	static llvm::Value *doAssignCast(CodeGenContext& context, llvm::Value *value,
-									  llvm::Type *variable_type, llvm::Value *variable);
+									  llvm::Type *variable_type, llvm::Value *variable, int line_number);
 
 	virtual llvm::Value* codeGen(CodeGenContext& context);
 };

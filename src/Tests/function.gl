@@ -1,7 +1,10 @@
 extern int printf(char *str, ...);
 extern void memset(void *ptr, int value, int:64 size);
 
-int test(char *str) { return 0; }
+int test(int ***matrix) {
+	printf("%d\n", matrix[0][0][0]);
+	return 0;
+}
 
 typedef struct VM_tag {
 	int i;
@@ -28,7 +31,6 @@ int main()
 	array[i] = 3;
 	typeof(array) array2 = array;
 
-	int i = sizeof(typeof(array2));
 	printf("%d\n", array2[2]);
 
 	printf("%lld\n", sizeof(int) << sizeof(double));
@@ -49,6 +51,17 @@ int main()
 	usss.y = 101.0;
 	printf("%d\n", sizeof(union us));
 	callee();
+
+	int two_dims[10][10][10];
+	two_dims[0][0][0] = 10;
+	int two_dims2[10][10][10] = two_dims;
+	printf("%d\n", two_dims2[0][0][0]);
+	//test((int ***)two_dims);
+
+	int i5 = 10;
+	union us usss2;
+
+	printf("%d\n", &usss2 && &usss);
 
 	return 0;
 }
