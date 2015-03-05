@@ -115,6 +115,12 @@ isBooleanTy(Type *T)
 	return (T->getTypeID() == Type::IntegerTyID
 			&& dyn_cast<IntegerType>(T)->getIntegerBitWidth() == 1);
 }
+inline bool
+isBoolean(Value *V)
+{
+	return (V->getType()->getTypeID() == Type::IntegerTyID
+			&& dyn_cast<IntegerType>(V->getType())->getIntegerBitWidth() == 1);
+}
 inline unsigned
 getBitWidth(Type *T)
 {

@@ -27,6 +27,8 @@ std::string* string_literal = NULL;
 %start C_COMMENT CC_COMMENT STRING_LITERAL_STATE
 
 %%
+<INITIAL>"if"								return TOKEN(TIF);
+<INITIAL>"else"							return TOKEN(TELSE);
 <INITIAL>"true"							return TOKEN(TTRUE);
 <INITIAL>"false"							return TOKEN(TFALSE);
 <INITIAL>"sizeof"							return TOKEN(TSIZEOF);

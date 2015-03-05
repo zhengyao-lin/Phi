@@ -85,7 +85,7 @@ NMethodCall::codeGen(CodeGenContext& context)
 													 dyn_cast<NExpression>(this)->line_number));
 	}
 
-	call = CallInst::Create(func_value, makeArrayRef(args), "", context.currentBlock());
+	call = context.builder->CreateCall(func_value, makeArrayRef(args), "");
 	delete proto;
 
 	return call;
@@ -125,27 +125,13 @@ doBinaryCast(CodeGenContext& context, Value* &lhs, Value* &rhs)
 		rhs = IntToFPCast_opt(context, rhs, ltype);
 		return;
 	} else if (rtype->isIntegerTy() && ltype->isPointerTy()) {
-		lhs = new PtrToIntInst(lhs, rtype, "",
-							   context.currentBlock());
+		lhs = context.builder->CreatePtrToInt(lhs, rtype, "");
 	} else if (ltype->isIntegerTy() && rtype->isPointerTy()) {
-		rhs = new PtrToIntInst(rhs, ltype, "",
-							   context.currentBlock());
+		rhs = context.builder->CreatePtrToInt(rhs, ltype, "");
 	}
 
 	return;
 }
-
-static Value *
-tryBinaryMerge(CodeGenContext& context, Value *V1, Instruction::BinaryOps instr, Value *V2)
-{
-	if (isConstant(V1) && isConstant(V2)) {
-		return ConstantExpr::get((unsigned)instr, (Constant *)V1, (Constant *)V2);
-	}
-
-	return BinaryOperator::Create(instr, V1, V2, "",
-								   context.currentBlock());
-}
-
 
 Value *
 NBinaryExpr::codeGen(CodeGenContext& context)
@@ -161,11 +147,11 @@ NBinaryExpr::codeGen(CodeGenContext& context)
 
 	switch (op) {
 		case TLOR:
-			return context.builder->CreateOr(context.builder->CreateICmpNE(lop, context.builder->getFalse(), ""),
-											  context.builder->CreateICmpNE(rop, context.builder->getFalse(), ""), "");
+			return context.builder->CreateOr(context.builder->CreateIsNotNull(lop, ""),
+											  context.builder->CreateIsNotNull(rop, ""), "");
 		case TLAND:
-			return context.builder->CreateAnd(context.builder->CreateICmpNE(lop, context.builder->getFalse(), ""),
-											   context.builder->CreateICmpNE(rop, context.builder->getFalse(), ""), "");
+			return context.builder->CreateAnd(context.builder->CreateIsNotNull(lop, ""),
+											   context.builder->CreateIsNotNull(rop, ""), "");
 		case TOR:
 			return context.builder->CreateOr(lop, rop, "");	
 		case TXOR:
@@ -230,8 +216,7 @@ NPrefixExpr::codeGen(CodeGenContext& context)
 	V = operand.codeGen(context);
 
 	if (op == TMUL) {
-		return new LoadInst(V, "", false,
-							 context.currentBlock());
+		return context.builder->CreateLoad(V, "");
 	} else if (op == TAND) {
 		if (context.isLValue()) {
 			return V;
@@ -403,19 +388,17 @@ NAssignmentExpr::doAssignCast(CodeGenContext& context, Value *value,
 			} else if (isConstantFP(value)) {
 				return ConstantFP::get(variable_type, getConstantDouble(value));
 			} else {
-				return CastInst::Create(CastInst::getCastOpcode(value, true, variable_type, true),
-										 value, variable_type, "", context.currentBlock());
+				return context.builder->CreateCast(CastInst::getCastOpcode(value, true, variable_type, true),
+													value, variable_type, "");
 			}
 		} else if (value_type->isIntegerTy() && variable_type->isFloatingPointTy()) {
 			return IntToFPCast_opt(context, value, variable_type);
 		} else if (value_type->isFloatingPointTy() && variable_type->isIntegerTy()) {
 			return FPToIntCast_opt(context, value, variable_type);
 		} else if (value_type->isIntegerTy() && variable_type->isPointerTy()) {
-			return new IntToPtrInst(value, variable_type, "",
-									 context.currentBlock());
+			return context.builder->CreateIntToPtr(value, variable_type, "");
 		} else if (value_type->isPointerTy() && variable_type->isIntegerTy()) {
-			return new PtrToIntInst(value, variable_type, "",
-									 context.currentBlock());
+			return context.builder->CreatePtrToInt(value, variable_type, "");
 		} else if (isArrayType(value_type)
 					&& isArrayType(variable_type)
 					&& !context.currentBlock()) {
@@ -443,15 +426,13 @@ NAssignmentExpr::doAssignCast(CodeGenContext& context, Value *value,
 										  getAlignOfJIT(VET), false);
 			return NULL;
 		} else if (isArrayPointerType(value_type) && isPointerType(variable_type)) {
-			tmp_V = dyn_cast<Value>(context.builder->CreateConstInBoundsGEP1_32(value, 0, ""));
+			tmp_V = dyn_cast<Value>(context.builder->CreateConstInBoundsGEP2_32(value, 0, 0, ""));
 			if (isSameType(tmp_V->getType(), variable_type)) {
 				return tmp_V;
 			}
-			return new BitCastInst(tmp_V, variable_type, "",
-									context.currentBlock());
+			return context.builder->CreateBitCast(tmp_V, variable_type, "");
 		} else {
-			return new BitCastInst(value, variable_type, "",
-									context.currentBlock());
+			return context.builder->CreateBitCast(value, variable_type, "");
 		}
 	} else {
 		if (value_type->isFloatTy()) {
@@ -459,8 +440,7 @@ NAssignmentExpr::doAssignCast(CodeGenContext& context, Value *value,
 				return ConstantFP::get(Type::getDoubleTy(getGlobalContext()),
 										getConstantDouble(value));
 			} else {
-				return new FPExtInst(value, Type::getDoubleTy(getGlobalContext()), "",
-									  context.currentBlock());
+				return context.builder->CreateFPExt(value, Type::getDoubleTy(getGlobalContext()), "");
 			}
 		}
 	}
@@ -495,8 +475,7 @@ NAssignmentExpr::codeGen(CodeGenContext& context)
 		return right;
 	}
 
-	return new StoreInst(right, left,
-						  false, context.currentBlock());
+	return context.builder->CreateStore(right, left, false);
 }
 
 Value *
@@ -534,8 +513,8 @@ NFieldExpr::codeGen(CodeGenContext& context)
 
 	if (is_union_flag) {
 		if (union_map.find(field_name.name) != union_map.end()) {
-			ret = new BitCastInst(struct_value, union_map[field_name.name]->getPointerTo(),
-								  "", context.currentBlock());
+			ret = context.builder->CreateBitCast(struct_value, union_map[field_name.name]->getPointerTo(),
+												 "");
 		} else {
 			CGERR_Failed_To_Find_Field_Name(context, field_name.name.c_str());
 			CGERR_setLineNum(context, dyn_cast<NExpression>(this)->line_number);

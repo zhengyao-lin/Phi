@@ -46,6 +46,7 @@ int main()
 
 	VM p;
 
+
 	union us usss;
 
 	usss.y = 101.0;
@@ -58,10 +59,18 @@ int main()
 	printf("%d\n", two_dims2[0][0][0]);
 	//test((int ***)two_dims);
 
-	int i5 = 10;
-	union us usss2;
+	bool i5 = false;
+	bool i6 = true;
 
-	printf("%d\n", &usss2 && &usss);
+	if (i5 && i6) {
+		printf("i5 == %d && i6 == %d\n", i5, i6);
+	} else if (i5) {
+		printf("only i5 == %d\n", i5);
+	} else if (i6) {
+		printf("only i6 == %d\n", i6);
+	} else {
+		printf("no!\n");
+	}
 
 	return 0;
 }

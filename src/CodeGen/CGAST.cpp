@@ -43,14 +43,3 @@ NBlock::codeGen(CodeGenContext& context)
 
 	return last;
 }
-
-Value*
-NReturnStatement::codeGen(CodeGenContext& context)
-{
-	Value *returnValue;
-
-	returnValue = expression.codeGen(context);
-	context.setCurrentReturnValue(returnValue);
-
-	return returnValue;
-}

@@ -283,7 +283,7 @@ public:
 	virtual llvm::Value* codeGen(CodeGenContext& context);
 };
 
-class NBlock : public NExpression {
+class NBlock : public NStatement {
 public:
 	int line_number = -1;
 	StatementList statements;
@@ -299,7 +299,20 @@ public:
 	NExpression& expression;
 
 	NReturnStatement(NExpression& expression) :
-		expression(expression) { }
+	expression(expression) { }
+
+	virtual llvm::Value* codeGen(CodeGenContext& context);
+};
+
+class NIfStatement : public NStatement {
+public:
+	int line_number = -1;
+	NExpression& condition;
+	NStatement *if_true;
+	NStatement *if_else;
+
+	NIfStatement(NExpression& condition, NStatement *if_true, NStatement *if_else) :
+	condition(condition), if_true(if_true), if_else(if_else) { }
 
 	virtual llvm::Value* codeGen(CodeGenContext& context);
 };

@@ -60,12 +60,14 @@ public:
 	std::map<std::string, FieldMap> structs;
 	std::map<std::string, UnionFieldMap> unions;
 	int currentBitWidth; // for extra long integer
+	BasicBlock *currentEndBlock; // used for branch
 
     CodeGenContext() {
         module = new Module("main", getGlobalContext());
 		builder = new IRBuilder<>(getGlobalContext());
 		types = initializeBasicType(*this);
 		currentBitWidth = 0;
+		currentEndBlock = NULL;
 		resetLValue();
     }
 
@@ -88,6 +90,12 @@ public:
 		}
 		return NULL;
     }
+    TerminatorInst *currentTerminator() {
+		if (blocks.size()) {
+        	return blocks.top()->block->getTerminator();
+		}
+		return NULL;
+    }
 	bool isLValue() {
 		return is_lvalue;
 	}
@@ -100,15 +108,25 @@ public:
 		return;
 	}
     void pushBlock(BasicBlock *block) {
-        blocks.push(new CodeGenBlock());
-        blocks.top()->returnValue = NULL;
-        blocks.top()->block = block;
+		CodeGenBlock *newb = new CodeGenBlock();
+
+        newb->returnValue = NULL;
+        newb->block = block;
+		if (currentBlock()) { // inherit locals
+			newb->locals = getTopLocals();
+		}
+
+		blocks.push(newb);
     }
     void popBlock() {
         CodeGenBlock *top = blocks.top();
         blocks.pop();
         delete top;
     }
+	void popAllBlock() {
+		while (currentBlock()) popBlock();
+		return;
+	}
     void setCurrentReturnValue(Value *value) {
         blocks.top()->returnValue = value;
     }

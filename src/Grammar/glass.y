@@ -47,7 +47,7 @@
 %token <token> TLPAREN TRPAREN TLBRACE TRBRACE
 				TAND TNOT TSIZEOF TALIGNOF TTYPEOF TARROW
 			    TELLIPSIS TCOLON TSEMICOLON TCOMMA TDOT
-				TLBRAKT TRBRAKT TLAND TLOR TOR TXOR
+				TLBRAKT TRBRAKT TLAND TLOR TOR TXOR TIF TELSE
 %token <token> TADD TSUB TMUL TDIV TMOD TSHR TSHL
 %token <token> TRETURN TEXTERN TDELEGATE TSTRUCT TSTATIC
 				TTYPEDEF TUNION
@@ -76,6 +76,7 @@
 %type <statement> statement external_declaration declarations variable_declaration
 				   function_definition ret_statement delegate_declaration
 				   struct_declaration union_declaration typedef_declaration
+				   selection_statement
 %type <token> assign_op unary_op
 %type <dim>	ptr_dim
 
@@ -477,6 +478,25 @@ statement
 	| expression TSEMICOLON
 	{
 		$$ = $<statement>1;
+		SETLINE($$);
+	}
+	| block
+	{
+		$$ = $<statement>1;
+		SETLINE($$);
+	}
+	| selection_statement
+	;
+
+selection_statement
+	: TIF TLPAREN expression TRPAREN statement
+	{
+		$$ = new NIfStatement(*$3, $5, NULL);
+		SETLINE($$);
+	}
+	| TIF TLPAREN expression TRPAREN statement TELSE statement
+	{
+		$$ = new NIfStatement(*$3, $5, $7);
 		SETLINE($$);
 	}
 	;

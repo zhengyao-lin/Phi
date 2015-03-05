@@ -61,7 +61,7 @@ NType::getType(CodeGenContext& context)
 Type*
 NTypeof::getType(CodeGenContext& context)
 {
-	BasicBlock *backup = context.builder->GetInsertBlock();
+	IRBuilderBase::InsertPoint backup = context.builder->saveIP();
 	bool isLV_backup = context.isLValue();
 	Value *V;
 
@@ -72,7 +72,7 @@ NTypeof::getType(CodeGenContext& context)
 	if (isLV_backup) context.setLValue();
 
 	delete context.builder->GetInsertBlock();
-	context.builder->SetInsertPoint(backup);
+	context.builder->restoreIP(backup);
 
 	if (isArrayPointer(V)) {
 		return V->getType()->getArrayElementType();

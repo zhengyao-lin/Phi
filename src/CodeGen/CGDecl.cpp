@@ -84,7 +84,7 @@ NVariableDecl::codeGen(CodeGenContext& context)
 			}
 
 
-			alloc = new AllocaInst(tmp_T, (**it).first.c_str(), context.currentBlock());
+			alloc = context.builder->CreateAlloca(tmp_T, nullptr, (**it).first.c_str());
 			context.getTopLocals()[(**it).first] = alloc;
 			if ((**it).third) {
 				id = new NIdentifier((**it).first);
@@ -305,15 +305,14 @@ NFunctionDecl::codeGen(CodeGenContext& context)
 		for (it = arguments.begin(), ai = function->arg_begin();
 			 it != arguments.end(); it++, ai++) {
 			ai->setName((*it)->id.name.c_str());
-			AllocaInst *Alloca = new AllocaInst(ai->getType(), nullptr, "",
-												context.currentBlock());
+			AllocaInst *Alloca = context.builder->CreateAlloca(ai->getType(), nullptr, "");
 			context.builder->CreateStore(ai, Alloca);
 			context.getTopLocals()[(*it)->id.name] = Alloca;
 		}
 
 		block->codeGen(context);
-		ReturnInst::Create(getGlobalContext(), context.getCurrentReturnValue(), bblock);
-		context.popBlock();
+		context.builder->CreateRet(context.getCurrentReturnValue());
+		context.popAllBlock();
 	}
 
 	return function;
