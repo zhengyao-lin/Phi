@@ -16,6 +16,13 @@ class NUnionDecl;
 class NSpecifier;
 class NFunctionDecl;
 
+typedef std::vector<NStatement*> StatementList;
+typedef std::vector<NExpression*> ExpressionList;
+typedef std::vector<NVariableDecl*> VariableList;
+typedef std::vector<NParamDecl*> ParamList;
+typedef std::vector<NExpression*> ArrayDim;
+typedef std::vector<NSpecifier*> DeclSpecifier;
+
 template <typename T1, typename T2, typename T3>
 class InitDeclarator
 {
@@ -26,16 +33,22 @@ public:
 
 	InitDeclarator(T1 first, T2 second, T3 third) :
 	first(first), second(second), third(third) { }
+
+	~InitDeclarator()
+	{
+		if (second) {
+			ArrayDim::const_iterator it;
+			for (it = second->begin();
+				 it != second->end(); it++) {
+				delete *it;
+			}
+
+			delete second;
+		}
+	}
 };
 
-typedef std::vector<NStatement*> StatementList;
-typedef std::vector<NExpression*> ExpressionList;
-typedef std::vector<NVariableDecl*> VariableList;
-typedef std::vector<NParamDecl*> ParamList;
-typedef std::vector<NExpression*> ArrayDim;
-typedef std::vector<NSpecifier*> DeclSpecifier;
-
-typedef InitDeclarator<std::string, ArrayDim*, NExpression*> Declarator;
+typedef InitDeclarator<std::string&, ArrayDim*, NExpression*> Declarator;
 typedef std::vector<Declarator *> DeclaratorList;
 
 // Type Specifier
@@ -53,6 +66,11 @@ public:
 	NIdentifierType(NIdentifier& type) :
 	type(type) { }
 
+	~NIdentifierType()
+	{
+		delete &type;
+	}
+
 	virtual llvm::Type* getType(CodeGenContext& context);
 };
 
@@ -63,6 +81,11 @@ public:
 	
 	NTypeof(NExpression& operand) :
 	operand(operand) { }
+
+	~NTypeof()
+	{
+		delete &operand;
+	}
 
 	virtual llvm::Type* getType(CodeGenContext& context);
 };
@@ -77,6 +100,11 @@ public:
 	NDerivedType(NType& base, int ptrDim, int arrDim) :
 	base(base), ptrDim(ptrDim), arrDim(arrDim) { }
 
+	~NDerivedType()
+	{
+		delete &base;
+	}
+
 	virtual llvm::Type* getType(CodeGenContext& context);
 };
 
@@ -84,13 +112,21 @@ class NStructType : public NType {
 public:
 	int line_number = -1;
 	NStructDecl *struct_decl;
-	const NIdentifier *id;
+	NIdentifier *id;
 
     NStructType(NStructDecl *struct_decl) :
 	id(NULL), struct_decl(struct_decl) { }
 
-    NStructType(const NIdentifier *id) :
+    NStructType(NIdentifier *id) :
 	id(id), struct_decl(NULL) { }
+
+	~NStructType()
+	{
+		if (struct_decl)
+			delete struct_decl;
+		else
+			delete id;
+	}
 
     virtual llvm::Type* getType(CodeGenContext& context);
 };
@@ -99,13 +135,21 @@ class NUnionType : public NType {
 public:
 	int line_number = -1;
 	NUnionDecl *union_decl;
-	const NIdentifier *id;
+	NIdentifier *id;
 
     NUnionType(NUnionDecl *union_decl) :
 	id(NULL), union_decl(union_decl) { }
 
-    NUnionType(const NIdentifier *id) :
+    NUnionType(NIdentifier *id) :
 	id(id), union_decl(NULL) { }
+
+	~NUnionType()
+	{
+		if union_decl
+			delete union_decl;
+		else
+			delete id;
+	}
 
     virtual llvm::Type* getType(CodeGenContext& context);
 };
@@ -145,10 +189,15 @@ class NVoid : public NExpression {
 class NInteger : public NExpression {
 public:
 	int line_number = -1;
-	const char *value;
+	std::string& value;
 
-	NInteger(const char *value) :
+	NInteger(std::string& value) :
 	value(value) { }
+
+	~NInteger()
+	{
+		delete &value;
+	}
 
 	virtual llvm::Value* codeGen(CodeGenContext& context);
 };
@@ -185,10 +234,15 @@ public:
 class NIdentifier : public NExpression {
 public:
 	int line_number = -1;
-	std::string name;
+	std::string& name;
 
-	NIdentifier(const std::string& name) :
+	NIdentifier(std::string& name) :
 	name(name) { }
+
+	~NIdentifier()
+	{
+		delete &name;
+	}
 
 	virtual llvm::Value* codeGen(CodeGenContext& context);
 };
@@ -199,13 +253,24 @@ class NMethodCall : public NExpression {
 public:
 	int line_number = -1;
 	NExpression& func_expr;
-	ExpressionList arguments;
+	ExpressionList& arguments;
 
 	NMethodCall(NExpression& func_expr, ExpressionList& arguments) :
 	func_expr(func_expr), arguments(arguments) { }
 
 	NMethodCall(NExpression& func_expr) :
-	func_expr(func_expr) { }
+	func_expr(func_expr), arguments(*new ExpressionList()) { }
+
+	~NMethodCall()
+	{
+		delete &func_expr;
+		ExpressionList::const_iterator it;
+		for (it = arguments.begin();
+			 it != arguments.end(); it++) {
+			delete *it;
+		}
+		delete &arguments;
+	}
 
 	virtual llvm::Value* codeGen(CodeGenContext& context);
 };
@@ -218,6 +283,12 @@ public:
 	NFieldExpr(NExpression& operand, NIdentifier& field_name) :
 	operand(operand), field_name(field_name) { }
 
+	~NFieldExpr()
+	{
+		delete &operand;
+		delete &field_name;
+	}
+
 	virtual llvm::Value* codeGen(CodeGenContext& context);
 };
 class NArrayExpr : public NExpression {
@@ -228,6 +299,12 @@ public:
 
 	NArrayExpr(NExpression& operand, NExpression& index) :
 	operand(operand), index(index) { }
+
+	~NArrayExpr()
+	{
+		delete &operand;
+		delete &index;
+	}
 
 	virtual llvm::Value* codeGen(CodeGenContext& context);
 };
@@ -243,6 +320,12 @@ public:
 
 	NBinaryExpr(NExpression& lval, int op, NExpression& rval) :
 	lval(lval), rval(rval), op(op) { }
+
+	~NBinaryExpr()
+	{
+		delete &lval;
+		delete &rval;
+	}
 
 	virtual llvm::Value* codeGen(CodeGenContext& context);
 };
@@ -265,6 +348,12 @@ public:
 	NPrefixExpr(int op, NType& type) :
 	type(type), operand(*new NExpression()), op(op) { }
 
+	~NPrefixExpr()
+	{
+		delete &type;
+		delete &operand;
+	}
+
 	virtual llvm::Value* codeGen(CodeGenContext& context);
 };
 
@@ -280,6 +369,12 @@ public:
 	static llvm::Value *doAssignCast(CodeGenContext& context, llvm::Value *value,
 									  llvm::Type *variable_type, llvm::Value *variable, int line_number);
 
+	~NAssignmentExpr()
+	{
+		delete &lval;
+		delete &rval;
+	}
+
 	virtual llvm::Value* codeGen(CodeGenContext& context);
 };
 
@@ -289,6 +384,14 @@ public:
 	StatementList statements;
 
 	NBlock() { }
+
+	~NBlock()
+	{
+		StatementList::const_iterator it;
+		for (it = statements.begin(); it != statements.end(); it++) {
+			delete *it;
+		}
+	}
 
 	virtual llvm::Value* codeGen(CodeGenContext& context);
 };
@@ -300,6 +403,11 @@ public:
 
 	NReturnStatement(NExpression& expression) :
 	expression(expression) { }
+
+	~NReturnStatement()
+	{
+		delete &expression;
+	}
 
 	virtual llvm::Value* codeGen(CodeGenContext& context);
 };
@@ -314,7 +422,20 @@ public:
 	NIfStatement(NExpression& condition, NStatement *if_true, NStatement *if_else) :
 	condition(condition), if_true(if_true), if_else(if_else) { }
 
+	~NIfStatement()
+	{
+		delete &condition;
+		delete if_true;
+		delete if_else;
+	}
+
 	virtual llvm::Value* codeGen(CodeGenContext& context);
+};
+
+class NLabeledStatement : public NStatement {
+public:
+	int line_number = -1;
+	NIdentifier& ident;
 };
 
 class NParamDecl : public NStatement {
@@ -331,6 +452,19 @@ public:
 	NParamDecl(NType& type, NIdentifier& id, ArrayDim& array_dim, NExpression *initializer) :
 	type(type), id(id), array_dim(array_dim), initializer(initializer) { }
 
+	~NParamDecl()
+	{
+		if (initializer)
+			delete initializer;
+		delete &id;
+		ArrayDim::const_iterator it;
+		for (it = array_dim.begin(); it != array_dim.end(); it++) {
+			delete *it;
+		}
+		delete &array_dim;
+		delete &type;
+	}
+
 	// virtual llvm::Value* codeGen(CodeGenContext& context);
 };
 
@@ -338,13 +472,26 @@ class NDelegateDecl : public NStatement {
 public:
 	int line_number = -1;
 	NType& type;
-	const NIdentifier& id;
+	NIdentifier& id;
 	bool has_vargs;
-	ParamList arguments;
+	ParamList &arguments;
 
-	NDelegateDecl(NType& type, const NIdentifier& id,
-				  const ParamList& arguments, bool has_vargs) :
+	NDelegateDecl(NType& type, NIdentifier& id,
+				  ParamList& arguments, bool has_vargs) :
 	type(type), id(id), arguments(arguments), has_vargs(has_vargs) { }
+
+	~NDelegateDecl()
+	{
+		delete &type;
+		delete &id;
+
+		ParamList::const_iterator it;
+		for (it = arguments.begin(); it != arguments.end(); it++) {
+			delete *it;
+		}
+
+		delete &arguments;
+	}
 
     virtual llvm::Value* codeGen(CodeGenContext& context);
 };
@@ -353,10 +500,21 @@ class NStructDecl : public NStatement {
 public:
 	int line_number = -1;
 	NIdentifier& id;
-    const VariableList& fields;
+    VariableList& fields;
 
-    NStructDecl(NIdentifier& id, const VariableList& fields) :
+    NStructDecl(NIdentifier& id, VariableList& fields) :
 	id(id), fields(fields) { }
+
+	~NStructDecl()
+	{
+		delete &id;
+		VariableList::const_iterator it;
+		for (it = fields.begin(); it != fields.end(); it++) {
+			delete *it;
+		}
+		
+		delete &fields;
+	}
 
     virtual llvm::Value* codeGen(CodeGenContext& context);
 };
@@ -365,10 +523,21 @@ class NUnionDecl : public NStatement {
 public:
 	int line_number = -1;
 	NIdentifier& id;
-    const VariableList& fields;
+	VariableList& fields;
 
-    NUnionDecl(NIdentifier& id, const VariableList& fields) :
+    NUnionDecl(NIdentifier& id, VariableList& fields) :
 	id(id), fields(fields) { }
+
+	~NUnionDecl()
+	{
+		delete &id;
+		VariableList::const_iterator it;
+		for (it = fields.begin(); it != fields.end(); it++) {
+			delete *it;
+		}
+		
+		delete &fields;
+	}
 
     virtual llvm::Value* codeGen(CodeGenContext& context);
 };
@@ -378,10 +547,22 @@ public:
 	int line_number = -1;
 	NType& type;
 	NIdentifier& id;
-	ArrayDim array_dim;
+	ArrayDim& array_dim;
 
-    NTypedefDecl(NType& type, NIdentifier& id, ArrayDim array_dim) :
+    NTypedefDecl(NType& type, NIdentifier& id, ArrayDim& array_dim) :
 	type(type), id(id), array_dim(array_dim) { }
+
+	~NTypedefDecl()
+	{
+		delete &type;
+		delete &id;
+		ArrayDim::const_iterator it;
+		for (it = array_dim.begin(); it != array_dim.end(); it++) {
+			delete *it;
+		}
+
+		delete &array_dim;
+	}
 
     virtual llvm::Value* codeGen(CodeGenContext& context);
 };
@@ -390,6 +571,12 @@ class SpecifierSet {
 public:
 	bool is_static = false;
 	NType *type = NULL;
+
+	~SpecifierSet()
+	{
+		if (type)
+			delete type;
+	}
 };
 
 class NSpecifier {
@@ -414,6 +601,11 @@ public:
 	NTypeSpecifier(NType& type) :
 	type(type) {}
 
+	~NTypeSpecifier()
+	{
+		delete &type;
+	}
+
 	virtual void setSpecifier(SpecifierSet *dest);
 };
 
@@ -428,6 +620,25 @@ public:
 	NVariableDecl(DeclSpecifier& var_specifier, DeclaratorList *declarator_list) :
 	var_specifier(var_specifier), declarator_list(declarator_list) { specifiers = new SpecifierSet(); }
 
+	~NVariableDecl()
+	{
+		DeclSpecifier::iterator di;
+		for (di = var_specifier.begin();
+			 di != var_specifier.end(); di++) {
+			delete *di;
+		}
+		delete &var_specifier;
+
+		DeclaratorList::iterator it;
+		for (it = declarator_list->begin();
+			 it != declarator_list->end(); it++) {
+			delete *it;
+		}
+		delete declarator_list;
+
+		delete specifiers;
+	}
+
 	virtual llvm::Value* codeGen(CodeGenContext& context);
 };
 
@@ -435,18 +646,39 @@ class NFunctionDecl : public NStatement {
 public:
 	int line_number = -1;
 	DeclSpecifier& func_specifier;
-	const NIdentifier& id;
+	NIdentifier& id;
 	bool has_vargs;
-	ParamList arguments;
+	ParamList& arguments;
 	NBlock *block;
 
 	// specifiers: will be set by specifier
 	SpecifierSet *specifiers;
 
-	NFunctionDecl(DeclSpecifier& func_specifier, const NIdentifier& id,
-				  const ParamList& arguments, NBlock *block, bool has_vargs) :
+	NFunctionDecl(DeclSpecifier& func_specifier, NIdentifier& id,
+				  ParamList& arguments, NBlock *block, bool has_vargs) :
 	func_specifier(func_specifier), id(id), arguments(arguments), block(block),
-	has_vargs(has_vargs) { specifiers = new SpecifierSet();  }
+	has_vargs(has_vargs) { specifiers = new SpecifierSet(); }
+
+	~NFunctionDecl()
+	{
+		delete &id;
+
+		ParamList::const_iterator it;
+		for (it = arguments.begin(); it != arguments.end(); it++) {
+			delete *it;
+		}
+		delete &arguments;
+
+		DeclSpecifier::iterator di;
+		for (di = func_specifier.begin();
+			 di != func_specifier.end(); di++) {
+			delete *di;
+		}
+		delete &func_specifier;
+
+		delete block;
+		delete specifiers;
+	}
 
 	virtual llvm::Value* codeGen(CodeGenContext& context);
 };

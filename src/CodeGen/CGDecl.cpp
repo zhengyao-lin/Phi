@@ -91,7 +91,6 @@ NVariableDecl::codeGen(CodeGenContext& context)
 				assign = new NAssignmentExpr(*id, *(**it).third);
 				assign->codeGen(context);
 				delete assign;
-				delete id;
 			}
 		}
 	} else {
@@ -107,11 +106,12 @@ NVariableDecl::codeGen(CodeGenContext& context)
 			if ((**it).third) {
 				if (!(init_value = dyn_cast<Constant>(NAssignmentExpr::doAssignCast(context, (**it).third->codeGen(context),
 																					tmp_T, nullptr,
-																					dyn_cast<NStatement>(this)->line_number)))) {
+																					line_number)))) {
 					CGERR_External_Variable_Is_Not_Constant(context);
 					CGERR_setLineNum(context, dyn_cast<NStatement>(this)->line_number);
 					CGERR_showAllMsg(context);
 				}
+				delete (**it).third;
 			}
 
 			var = new GlobalVariable(*context.module, tmp_T, false,

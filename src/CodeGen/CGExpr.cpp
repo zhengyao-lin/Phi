@@ -223,7 +223,9 @@ NPrefixExpr::codeGen(CodeGenContext& context)
 		} else {
 			if (loader = dyn_cast<LoadInst>(V)) {
 				loader->removeFromParent();
-				return loader->getPointerOperand();
+				V = loader->getPointerOperand();
+				delete loader;
+				return V;
 			} else {
 				CGERR_Get_Non_Resident_Value_Address(context);
 				CGERR_setLineNum(context, dyn_cast<NExpression>(this)->line_number);

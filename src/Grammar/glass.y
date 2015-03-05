@@ -245,10 +245,12 @@ init_declarator
 	: identifier initializer_opt
 	{
 		$$ = new Declarator($1->name, NULL, $2);
+		// delete $1;
 	}
 	| identifier array_dim initializer_opt
 	{
 		$$ = new Declarator($1->name, $2, $3);
+		// delete $1;
 	}
 	;
 
@@ -278,7 +280,6 @@ delegate_declaration
 	{
 		$$ = new NDelegateDecl(*$2, *$3, *$5, false);
 		SETLINE($$);
-		delete $5;
 	}
 	| TDELEGATE TSTATIC type_specifier identifier TLPAREN function_arguments TRPAREN
 	{
@@ -288,13 +289,11 @@ delegate_declaration
 
 		$$ = new NDelegateDecl(*$3, *$4, *$6, false);
 		SETLINE($$);
-		delete $6;
 	}
 	| TDELEGATE type_specifier identifier TLPAREN function_arguments ellipsis_token TRPAREN
 	{
 		$$ = new NDelegateDecl(*$2, *$3, *$5, true);
 		SETLINE($$);
-		delete $5;
 	}
 	| TDELEGATE TSTATIC type_specifier identifier TLPAREN function_arguments ellipsis_token TRPAREN
 	{
@@ -304,7 +303,6 @@ delegate_declaration
 
 		$$ = new NDelegateDecl(*$3, *$4, *$6, true);
 		SETLINE($$);
-		delete $6;
 	}
 	;
 
@@ -486,6 +484,7 @@ statement
 		SETLINE($$);
 	}
 	| selection_statement
+	//| labeled_statement
 	;
 
 selection_statement
@@ -500,6 +499,13 @@ selection_statement
 		SETLINE($$);
 	}
 	;
+
+ /*labeled_statement
+	: identifier TCOLON statement
+	{
+		$$
+	}
+	;*/
 
 block
 	: TLBRACE statement_list TRBRACE
@@ -532,16 +538,15 @@ identifier
 	{
 		$$ = new NIdentifier(*$1);
 		SETLINE($$);
-		delete $1;
 	}
 	;
 
 numeric
 	: TINTEGER
 	{
-		$$ = new NInteger(strdup($1->c_str()));
+		$$ = new NInteger(*$1);
 		SETLINE($$);
-		delete $1;
+		//delete $1;
 	}
 	| TDOUBLE
 	{
@@ -590,7 +595,6 @@ postfix_expression
 	{
 		$$ = new NMethodCall(*$1, *$3);
 		SETLINE($$);
-		delete $3;
 	}
 	| postfix_expression TLBRAKT expression TRBRAKT
 	{

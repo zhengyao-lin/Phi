@@ -9,7 +9,7 @@ NInteger::codeGen(CodeGenContext& context)
 {
 	StringRef str(value);
 	APInt apint(context.currentBitWidth, str, 10);
-	long long integer = atol(value);
+	long long integer = atol(value.c_str());
 
 	if (context.currentBitWidth) {
 		return Constant::getIntegerValue(Type::getIntNTy(getGlobalContext(), context.currentBitWidth),
