@@ -31,4 +31,4 @@ clean:
 	cd Grammar; $(MAKE) clean
 	cd CodeGen; $(MAKE) clean
 	cd ErrorMsg; $(MAKE) clean
-	$(RM) -rf *.o $(TARGET)
+	$(RM) -rf *.o *.ll $(TARGET)

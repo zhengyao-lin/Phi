@@ -16,6 +16,11 @@ union ut {
 	int j;
 };
 
+int funct()
+{
+	return funct();
+}
+
 int main()
 {
 	int i = 2;

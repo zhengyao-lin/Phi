@@ -219,3 +219,19 @@ CGERR_Unsupport_Integer_Bitwidth_For_Data_Array(CodeGenContext& context)
 											  "Unsupport integer bit width for data array"));
 	return;
 }
+
+inline void
+CGERR_Duplicate_Struct_Type_Name(CodeGenContext& context)
+{
+	context.messages.newMessage(new ErrorInfo(ErrorInfo::Error, true, ErrorInfo::Exit1,
+											  "Duplicate structure type name"));
+	return;
+}
+
+inline void
+CGERR_Duplicate_Union_Type_Name(CodeGenContext& context)
+{
+	context.messages.newMessage(new ErrorInfo(ErrorInfo::Error, true, ErrorInfo::Exit1,
+											  "Duplicate union type name"));
+	return;
+}

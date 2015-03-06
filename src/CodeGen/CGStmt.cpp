@@ -49,6 +49,7 @@ NIfStatement::codeGen(CodeGenContext& context)
 	if (!if_true_block->getTerminator()) {
 		BranchInst::Create(end_block, if_true_block); // goto end block whether else block is exist ot not (if don't have a terminator)
 	}
+	context.popBlock();
 
 	if (if_else) {
 		if_else_block = BasicBlock::Create(getGlobalContext(), "", orig_block->getParent(),
@@ -58,6 +59,7 @@ NIfStatement::codeGen(CodeGenContext& context)
 		if (!if_else_block->getTerminator()) {
 			BranchInst::Create(end_block, if_else_block); // goto end block (if don't have a terminator)
 		}
+		context.popBlock();
 
 		context.currentEndBlock = orig_end_block; // restore info
 		setBlock(end_block); // insert other insts at end block

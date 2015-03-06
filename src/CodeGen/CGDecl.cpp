@@ -4,6 +4,8 @@
 #include "Grammar/Parser.hpp"
 #include "Inlines.h"
 
+#define getLine(p) (((NStatement *)this)->line_number)
+
 static vector<Type*>
 getArgTypeList(CodeGenContext& context, ParamList args)
 {
@@ -80,7 +82,7 @@ NVariableDecl::codeGen(CodeGenContext& context)
 			tmp_T = T;
 			if ((**it).second) {
 				tmp_T = setArrayType(context, tmp_T, *(**it).second,
-									 dyn_cast<NStatement>(this)->line_number);
+									 getLine(this));
 			}
 
 
@@ -99,16 +101,16 @@ NVariableDecl::codeGen(CodeGenContext& context)
 			tmp_T = T;
 			if ((**it).second) {
 				tmp_T = setArrayType(context, tmp_T, *(**it).second,
-									 dyn_cast<NStatement>(this)->line_number);
+									 getLine(this));
 			}
 
 			init_value = Constant::getNullValue(tmp_T);
 			if ((**it).third) {
 				if (!(init_value = dyn_cast<Constant>(NAssignmentExpr::doAssignCast(context, (**it).third->codeGen(context),
 																					tmp_T, nullptr,
-																					line_number)))) {
+																					getLine(this))))) {
 					CGERR_External_Variable_Is_Not_Constant(context);
-					CGERR_setLineNum(context, dyn_cast<NStatement>(this)->line_number);
+					CGERR_setLineNum(context, getLine(this));
 					CGERR_showAllMsg(context);
 				}
 				delete (**it).third;
@@ -151,9 +153,16 @@ NStructDecl::codeGen(CodeGenContext& context)
 	StructType *struct_type;
 	Type *T;
 	DeclSpecifier::const_iterator si;
+	string real_name = STRUCT_PREFIX + id.name;
 
-	struct_type = StructType::create(getGlobalContext(), STRUCT_PREFIX + id.name);
-	context.types[STRUCT_PREFIX + id.name] = struct_type;
+	if (context.types.find(real_name) != context.types.end()) { // duplicate
+		CGERR_Duplicate_Struct_Type_Name(context);
+		CGERR_setLineNum(context, getLine(this));
+		CGERR_showAllMsg(context);
+	}
+
+	struct_type = StructType::create(getGlobalContext(), real_name);
+	context.types[real_name] = struct_type;
 
 	for (vi = fields.begin(), i = 0;
 		 vi != fields.end(); vi++) {
@@ -169,20 +178,20 @@ NStructDecl::codeGen(CodeGenContext& context)
 
 			if ((**di).second) {
 				field_types.push_back(setArrayType(context, T,
-												   *(**di).second, ((NStatement)(**vi)).line_number));
+												   *(**di).second, getLine(*vi)));
 			} else {
 				field_types.push_back(T);
 			}
 
 			if ((**di).third) {
 				CGERR_Initializer_Cannot_Be_In_Struct(context);
-				CGERR_setLineNum(context, ((NStatement)(**vi)).line_number);
+				CGERR_setLineNum(context, getLine(*vi));
 				CGERR_showAllMsg(context);
 			}
 		}
 	}
 	struct_type->setBody(makeArrayRef(field_types), true);
-	context.structs[STRUCT_PREFIX + id.name] = field_map;
+	context.structs[real_name] = field_map;
 
 	return (Value *)struct_type;
 }
@@ -199,12 +208,19 @@ NUnionDecl::codeGen(CodeGenContext& context)
 	Type *tmp_T;
 	Type *T;
 	DeclSpecifier::const_iterator si;
+	string real_name = UNION_PREFIX + id.name;
+
+	if (context.types.find(real_name) != context.types.end()) { // duplicate
+		CGERR_Duplicate_Union_Type_Name(context);
+		CGERR_setLineNum(context, getLine(this));
+		CGERR_showAllMsg(context);
+	}
 
 	Type *max_sized_type = NULL;
 	uint64_t max_size = 0;
 
-	union_type = StructType::create(getGlobalContext(), UNION_PREFIX + id.name);
-	context.types[UNION_PREFIX + id.name] = union_type;
+	union_type = StructType::create(getGlobalContext(), real_name);
+	context.types[real_name] = union_type;
 
 	for (vi = fields.begin(), i = 0;
 		 vi != fields.end(); vi++) {
@@ -220,7 +236,7 @@ NUnionDecl::codeGen(CodeGenContext& context)
 
 			if ((**di).second) {
 				tmp_T = setArrayType(context, T,
-									 *(**di).second, ((NStatement)(**vi)).line_number);
+									 *(**di).second, getLine(*vi));
 			} else {
 				tmp_T = T;
 			}
@@ -234,14 +250,14 @@ NUnionDecl::codeGen(CodeGenContext& context)
 
 			if ((**di).third) {
 				CGERR_Initializer_Cannot_Be_In_Union(context);
-				CGERR_setLineNum(context, ((NStatement)(**vi)).line_number);
+				CGERR_setLineNum(context, getLine(*vi));
 				CGERR_showAllMsg(context);
 			}
 		}
 	}
 	field_types.push_back(max_sized_type);
 	union_type->setBody(makeArrayRef(field_types), true);
-	context.unions[UNION_PREFIX + id.name] = field_map;
+	context.unions[real_name] = field_map;
 
 	return (Value *)union_type;
 }
@@ -251,7 +267,7 @@ NTypedefDecl::codeGen(CodeGenContext& context)
 {
 	Type *T = type.getType(context);
 
-	T = setArrayType(context, T, array_dim, this->line_number);
+	T = setArrayType(context, T, array_dim, getLine(this));
 
 	context.types[id.name] = T;
 
@@ -292,7 +308,7 @@ NFunctionDecl::codeGen(CodeGenContext& context)
 	if (block) {
 		if (context.currentBlock()) {
 			CGERR_Nesting_Function(context);
-			CGERR_setLineNum(context, ((NStatement *)this)->line_number);
+			CGERR_setLineNum(context, getLine(this));
 			CGERR_showAllMsg(context);
 		}
 
