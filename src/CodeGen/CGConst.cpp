@@ -3,20 +3,28 @@
 #include "CGErr.h"
 #include "Grammar/Parser.hpp"
 #include "Inlines.h"
+#include <sstream>
+#include <string.h>
 
 Value*
 NInteger::codeGen(CodeGenContext& context)
 {
-	StringRef str(value);
-	APInt apint(context.currentBitWidth, str, 10);
-	long long integer = atol(value.c_str());
+	unsigned radix = (value.c_str()[0] == '0'
+					   && strlen(value.c_str()) > 1 ? (value.c_str()[1] == 'x'
+													   || value.c_str()[1] == 'X' ? 16 : 8)
+													: 10);
+	StringRef str(value.substr(radix == 16 ? 2 : (radix == 8 ? 1 : 0 )));
+	unsigned bits = APInt::getBitsNeeded(str, radix); 
+	APInt apint(bits, str, radix);
 
-	if (context.currentBitWidth) {
-		return Constant::getIntegerValue(Type::getIntNTy(getGlobalContext(), context.currentBitWidth),
-										  apint);
-	}
+	return Constant::getIntegerValue(Type::getIntNTy(getGlobalContext(), bits),
+									  apint);
+}
 
-	return context.builder->getInt32(integer);
+Value*
+NChar::codeGen(CodeGenContext& context)
+{
+	return context.builder->getInt8(value);
 }
 
 Value*

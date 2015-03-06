@@ -7,13 +7,14 @@ HEX				[a-fA-F0-9]
 OCT				[0-7]
 LETTER			[a-zA-Z_]
 ISUFFIX			(l|L|s|S|u|U)+
-IPREFIX			(#)
 FSUFFIX			(l|L)
 
 %{
+#include <stdio.h>
 #include <string>
 #include "AST/Node.h"
 #include "Parser.hpp"
+#include "AST/ASTErr.h"
 
 #define SAVE_TOKEN()		(yylval.string = new std::string(yytext, yyleng))
 #define TOKEN(t)			(yylval.token = t)
@@ -21,6 +22,7 @@ FSUFFIX			(l|L)
 
 int current_line_number = 1;
 std::string* string_literal = NULL;
+bool is_string = false;
 %}
 
 %option noyywrap
@@ -96,11 +98,19 @@ std::string* string_literal = NULL;
 	SAVE_TOKEN();
 	return TIDENTIFIER;
 }
-<INITIAL>{PM}?{DIGIT}+\.{DIGIT}+{FSUFFIX}? {
+<INITIAL>{DIGIT}+\.{DIGIT}+{FSUFFIX}? {
 	SAVE_TOKEN();
 	return TDOUBLE;
 }
-<INITIAL>{IPREFIX}?{PM}?{DIGIT}+{ISUFFIX}? {
+<INITIAL>"0"{OCT}+{ISUFFIX}? { // oct
+	SAVE_TOKEN();
+	return TINTEGER;
+}
+<INITIAL>"0"[xX]{HEX}+{ISUFFIX}? { // hex
+	SAVE_TOKEN();
+	return TINTEGER;
+}
+<INITIAL>{DIGIT}+{ISUFFIX}? { // dec
 	SAVE_TOKEN();
 	return TINTEGER;
 }
@@ -128,13 +138,48 @@ std::string* string_literal = NULL;
  /* String */
 <INITIAL>\" {
 	string_literal = new std::string("", 0);
+	is_string = true;
+    BEGIN STRING_LITERAL_STATE;
+}
+<INITIAL>\' {
+	string_literal = new std::string("", 0);
+	is_string = false;
     BEGIN STRING_LITERAL_STATE;
 }
 <STRING_LITERAL_STATE>\" {
-	yylval.string = string_literal;
-	string_literal = NULL;
-	BEGIN INITIAL;
-	return TSTRING;
+	if (is_string) {
+		yylval.string = string_literal;
+		string_literal = NULL;
+		BEGIN INITIAL;
+		return TSTRING;
+	} else {
+		*string_literal += '"';
+	}
+}
+<STRING_LITERAL_STATE>\' {
+	if (is_string) {
+		*string_literal += '\'';
+	} else {
+		if (string_literal->size() > 1) {
+			ASTERR_Too_Much_Character();
+			ASTERR_setLineNumber();
+			ASTERR_showAllMsg();
+		}
+		yylval.character = string_literal->c_str()[0];
+		string_literal = NULL;
+		BEGIN INITIAL;
+		return TCHAR;
+	}
+}
+<STRING_LITERAL_STATE>\\{OCT}{1,3} {
+	int letter;
+	sscanf(&yytext[1], "%o", &letter);
+    *string_literal += letter;
+}
+<STRING_LITERAL_STATE>\\[xX]{HEX}{1,2} {
+	int letter;
+	sscanf(&yytext[2], "%x", &letter);
+    *string_literal += letter;
 }
 <STRING_LITERAL_STATE>{NEWLINE}        {
 	*string_literal += yytext[0];

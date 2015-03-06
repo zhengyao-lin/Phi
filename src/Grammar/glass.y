@@ -8,9 +8,12 @@
 
 	NBlock *AST = NULL;
 
-	extern int yylex();
-	extern int current_line_number;
-	extern char *yytext;
+	void
+	ASTERR_Undefined_Syntax_Error(const char *token) {
+		error_messages.newMessage(new ErrorInfo(ErrorInfo::Error, true, ErrorInfo::Exit1,
+								  "Undefined syntax error (near \"$(token)\")", token));
+		return;
+	}
 
 	void
 	yyerror(const char *msg) {
@@ -38,11 +41,13 @@
 	DeclaratorList *declarator_list;
 	NParamDecl *param_declaration;
 	std::string *string;
+	char character;
 	int token;
 	int dim;
 }
 
 %token <string> TIDENTIFIER TINTEGER TDOUBLE TSTRING TTRUE TFALSE
+%token <character> TCHAR
 %token <token> TCEQ TCNE TCLT TCLE TCGT TCGE TASSIGN
 %token <token> TLPAREN TRPAREN TLBRACE TRBRACE
 				TAND TNOT TSIZEOF TALIGNOF TTYPEOF TARROW
@@ -553,6 +558,11 @@ numeric
 		$$ = new NDouble(atof($1->c_str()));
 		SETLINE($$);
 		delete $1;
+	}
+	| TCHAR
+	{
+		$$ = new NChar($1);
+		SETLINE($$);
 	}
 	| TTRUE
 	{

@@ -1,7 +1,12 @@
+#ifndef _ASTERR_H_
+#define _ASTERR_H_
+
 #include "ErrorMsg/EMCore.h"
 
 using namespace std;
 
+extern int yylex();
+extern char *yytext;
 extern int current_line_number;
 static ErrorMessage error_messages;
 
@@ -23,13 +28,6 @@ inline void
 ASTERR_setLineNumber(void)
 {
 	error_messages.setTopLineNumber(current_line_number);
-	return;
-}
-
-void
-ASTERR_Undefined_Syntax_Error(const char *token) {
-	error_messages.newMessage(new ErrorInfo(ErrorInfo::Error, true, ErrorInfo::Exit1,
-							  "Undefined syntax error (near \"$(token)\")", token));
 	return;
 }
 
@@ -64,3 +62,13 @@ ASTERR_Missing_Semicolon(void)
 							  "Missing semicolon"));
 	return;
 }
+
+inline void
+ASTERR_Too_Much_Character(void)
+{
+	error_messages.newMessage(new ErrorInfo(ErrorInfo::Error, true, ErrorInfo::Exit1,
+							  "Too much character"));
+	return;
+}
+
+#endif

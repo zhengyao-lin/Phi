@@ -9,11 +9,11 @@ int fi(int n, int m)
 		return n;
 	}
 
-	return fi(n - 1, m) + fi(n, m - 1);
+	return fi(n - 1, m) + fi(n, m -1);
 }
 
 int main()
 {
-	printf("%d\n", fi(10, 10));
+	printf("%d\n", fi('\xf', 0xf));
 	return 0;
 }

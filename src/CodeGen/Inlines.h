@@ -17,7 +17,7 @@ getConstantDouble(Value *C)
 inline uint64_t
 getConstantInt(Value *C)
 {
-	return ((ConstantInt *)C)->getValue().getSExtValue();
+	return *((ConstantInt *)C)->getValue().getRawData();
 }
 inline bool
 isConstantFP(Value *V)

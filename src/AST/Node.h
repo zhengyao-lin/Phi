@@ -195,6 +195,19 @@ public:
 
 	virtual llvm::Value* codeGen(CodeGenContext& context);
 };
+class NChar : public NExpression {
+public:
+	int line_number = -1;
+	char value;
+
+	NChar(char value) :
+	value(value) { }
+
+	virtual ~NChar()
+	{ }
+
+	virtual llvm::Value* codeGen(CodeGenContext& context);
+};
 class NBoolean : public NExpression {
 public:
 	int line_number = -1;
