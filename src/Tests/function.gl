@@ -1,31 +1,23 @@
 extern int printf(char *str, ...);
 extern void memset(void *ptr, int value, int:64 size);
+extern void *malloc(int:64 size);
 
-int test(int ***matrix) {
-	printf("%d\n", matrix[0][0][0]);
-	return 0;
-}
-
-typedef struct VM_tag {
+/*typedef struct VM_tag {
 	int i;
 	char *msg;
 } VM;
 
 struct s {
 	int i, a[10] = "hi";
-};
+};*/
 
-union us {
+union ut {
 	int i;
-	double y;
+	int j;
 };
-
-int callee();
 
 int main()
 {
-	extern void *malloc(int:64 size);
-
 	int i = 2;
 	int array[10 + 3 - 2 - 1 * 109 / (100 + 9) + sizeof(int)];
 	array[i] = 3;
@@ -39,25 +31,15 @@ int main()
 	int *arrayP = &array[1];
 	printf("%d\n", arrayP[1]);
 
-	struct s p;
-
 	//memset(&p, 2, sizeof(typeof(p)));
 	printf("%d\n", sizeof(int));
 
-	VM p;
-
-
-	union us usss;
-
-	usss.y = 101.0;
-	printf("%d\n", sizeof(union us));
-	callee();
+	int usss;
 
 	int two_dims[10][10][10];
 	two_dims[0][0][0] = 10;
 	int two_dims2[10][10][10] = two_dims;
 	printf("%d\n", two_dims2[0][0][0]);
-	//test((int ***)two_dims);
 
 	bool i5 = false;
 	bool i6 = true;
@@ -73,9 +55,4 @@ int main()
 	}
 
 	return 0;
-}
-
-int callee()
-{
-	return 10;
 }

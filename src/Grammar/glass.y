@@ -244,13 +244,13 @@ initializer_opt
 init_declarator
 	: identifier initializer_opt
 	{
-		$$ = new Declarator($1->name, NULL, $2);
-		// delete $1;
+		$$ = new Declarator(*$1, NULL, $2);
+		//delete $1;
 	}
 	| identifier array_dim initializer_opt
 	{
-		$$ = new Declarator($1->name, $2, $3);
-		// delete $1;
+		$$ = new Declarator(*$1, $2, $3);
+		//delete $1;
 	}
 	;
 

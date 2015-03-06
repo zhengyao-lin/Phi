@@ -20,10 +20,10 @@ int main(int argc, char **argv)
 	InitializeNativeTarget();
 	CodeGenContext context;
 	context.generateCode(*AST);
+	delete AST;
 	context.module->dump();
 	context.runCode();
 
-	delete AST;
 	llvm_shutdown();
 
 	return 0;

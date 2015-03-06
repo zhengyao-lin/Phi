@@ -138,6 +138,7 @@ NStructType::getType(CodeGenContext& context)
 	CGERR_Unknown_Struct_Type(context, id->name.c_str());
 	CGERR_setLineNum(context, this->line_number);
 	CGERR_showAllMsg(context);
+
 	return nullptr;
 }
 

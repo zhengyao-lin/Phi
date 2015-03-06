@@ -84,10 +84,10 @@ NVariableDecl::codeGen(CodeGenContext& context)
 			}
 
 
-			alloc = context.builder->CreateAlloca(tmp_T, nullptr, (**it).first.c_str());
-			context.getTopLocals()[(**it).first] = alloc;
+			alloc = context.builder->CreateAlloca(tmp_T, nullptr, (**it).first.name.c_str());
+			context.getTopLocals()[(**it).first.name] = alloc;
 			if ((**it).third) {
-				id = new NIdentifier((**it).first);
+				id = &(**it).first;
 				assign = new NAssignmentExpr(*id, *(**it).third);
 				assign->codeGen(context);
 				delete assign;
@@ -117,8 +117,8 @@ NVariableDecl::codeGen(CodeGenContext& context)
 			var = new GlobalVariable(*context.module, tmp_T, false,
 									 (specifiers->is_static ? llvm::GlobalValue::InternalLinkage
 															: llvm::GlobalValue::ExternalLinkage),
-									 init_value, (**it).first); 
-			context.getGlobals()[(**it).first] = var;
+									 init_value, (**it).first.name); 
+			context.getGlobals()[(**it).first.name] = var;
 		}
 	}
 
@@ -166,7 +166,7 @@ NStructDecl::codeGen(CodeGenContext& context)
 		T = (**vi).specifiers->type->getType(context);
 		for (di = (**vi).declarator_list->begin();
 			 di != (**vi).declarator_list->end(); di++, i++) {
-			field_map[(*di)->first] = i;
+			field_map[(*di)->first.name] = i;
 
 			if ((**di).second) {
 				field_types.push_back(setArrayType(context, T,
@@ -228,7 +228,7 @@ NUnionDecl::codeGen(CodeGenContext& context)
 			}
 
 
-			field_map[(**di).first] = tmp_T;
+			field_map[(**di).first.name] = tmp_T;
 
 			if (getConstantIntExprJIT(ConstantExpr::getSizeOf(tmp_T)) > max_size) {
 				max_sized_type = tmp_T;
