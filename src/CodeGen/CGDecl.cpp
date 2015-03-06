@@ -149,11 +149,10 @@ NStructDecl::codeGen(CodeGenContext& context)
 	FieldMap field_map;
 	vector<Type*> field_types;
 	StructType *struct_type;
-	StringRef struct_name(STRUCT_PREFIX + id.name);
 	Type *T;
 	DeclSpecifier::const_iterator si;
 
-	struct_type = StructType::create(getGlobalContext(), struct_name);
+	struct_type = StructType::create(getGlobalContext(), STRUCT_PREFIX + id.name);
 	context.types[STRUCT_PREFIX + id.name] = struct_type;
 
 	for (vi = fields.begin(), i = 0;
@@ -197,7 +196,6 @@ NUnionDecl::codeGen(CodeGenContext& context)
 	UnionFieldMap field_map;
 	vector<Type*> field_types;
 	StructType *union_type;
-	StringRef union_name(UNION_PREFIX + id.name);
 	Type *tmp_T;
 	Type *T;
 	DeclSpecifier::const_iterator si;
@@ -205,7 +203,7 @@ NUnionDecl::codeGen(CodeGenContext& context)
 	Type *max_sized_type = NULL;
 	uint64_t max_size = 0;
 
-	union_type = StructType::create(getGlobalContext(), union_name);
+	union_type = StructType::create(getGlobalContext(), UNION_PREFIX + id.name);
 	context.types[UNION_PREFIX + id.name] = union_type;
 
 	for (vi = fields.begin(), i = 0;

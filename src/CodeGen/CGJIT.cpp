@@ -55,7 +55,7 @@ getConstantIntExprJIT(Constant *const_expr)
 	CallInst::Create(callee, args, "", bblock);
 	ReturnInst::Create(getGlobalContext(), ConstantInt::get(Type::getInt32Ty(getGlobalContext()), 0), bblock);
 
-	ee = EngineBuilder(module).create();
+	ee = ExecutionEngine::create(module);
 	ee->runFunction(mainFunc, noargs);
 
 	delete ee;
