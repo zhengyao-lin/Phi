@@ -97,8 +97,7 @@ doBinaryCast(CodeGenContext& context, Value* &lhs, Value* &rhs)
 	Type *ltype = lhs->getType();
 	Type *rtype = rhs->getType();
 
-	if (isSameType(ltype, rtype)
-		|| (ltype->isIntegerTy() && rtype->isIntegerTy())) {
+	if (isSameType(ltype, rtype)) {
 		return;
 	}
 

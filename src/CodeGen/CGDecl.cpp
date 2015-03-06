@@ -325,7 +325,8 @@ NFunctionDecl::codeGen(CodeGenContext& context)
 		}
 
 		block->codeGen(context);
-		context.builder->CreateRet(context.getCurrentReturnValue());
+		if (!context.currentBlock()->getTerminator())
+			context.builder->CreateRet(Constant::getNullValue(ret_type));
 		context.popAllBlock();
 	}
 

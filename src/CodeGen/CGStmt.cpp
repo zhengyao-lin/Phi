@@ -12,7 +12,7 @@ NReturnStatement::codeGen(CodeGenContext& context)
 	returnValue = expression.codeGen(context);
 	context.setCurrentReturnValue(returnValue);
 
-	return returnValue;
+	return context.builder->CreateRet(returnValue);
 }
 
 #define setBlock(b) (context.pushBlock(b), \

@@ -2,6 +2,7 @@ TARGET = testbed
 OBJS = Grammar/Grammar.o \
 	   CodeGen/CodeGen.o \
 	   ErrorMsg/ErrorMsg.o \
+	   llc.o \
 	   main.o
 
 LLVMCONFIG = llvm-config

@@ -1,0 +1,19 @@
+extern int printf(char *str, ...);
+
+int fi(int n, int m)
+{
+	if (n == 1) {
+		return m;
+	}
+	if (m == 1) {
+		return n;
+	}
+
+	return fi(n - 1, m) + fi(n, m - 1);
+}
+
+int main()
+{
+	printf("%d\n", fi(10, 10));
+	return 0;
+}
