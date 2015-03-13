@@ -5,14 +5,14 @@
 #include "Inlines.h"
 
 Value *
-codeGenLoadValue(CodeGenContext& context, Value *V)
+codeGenLoadValue(CodeGenContext& context, Value *val)
 {
 	if (context.isLValue()
-		|| isArrayPointer(V)) {
-		return V;
+		|| isArrayPointer(val)) {
+		return val;
 	}
 
-	return context.builder->CreateLoad(V, "");
+	return context.builder->CreateLoad(val, "");
 }
 
 Value *
@@ -26,7 +26,7 @@ NIdentifier::codeGen(CodeGenContext& context)
 				return func;
 			} else {
 				CGERR_Undeclared_Identifier(context, name.c_str());
-				CGERR_setLineNum(context, this->line_number);
+				CGERR_setLineNum(context, this->lineno);
 				CGERR_showAllMsg(context);
 				return NULL;
 			}
@@ -42,50 +42,53 @@ Value *
 NMethodCall::codeGen(CodeGenContext& context)
 {
 	int i;
-	Value *func_value = func_expr.codeGen(context);
-	Value *arg_tmp;
+	Value *func_val = func_expr.codeGen(context);
+	Value *tmp;
 	Function *proto;
 	std::vector<Value*> args;
-	ExpressionList::const_iterator it;
+	ExpressionList::const_iterator expr_it;
 	Type::subtype_iterator arg_it;
 	FunctionType *ftype;
 	CallInst *call;
-	Type *argType;
+	Type *arg_type;
 
 	if (context.isLValue()) {
 		CGERR_Function_Call_As_LValue(context);
-		CGERR_setLineNum(context, dyn_cast<NExpression>(this)->line_number);
+		CGERR_setLineNum(context, dyn_cast<NExpression>(this)->lineno);
 		CGERR_showAllMsg(context);
+		return NULL;
 	}
 
-	if (func_value->getType()->isPointerTy()
-		&& func_value->getType()->getPointerElementType()->isFunctionTy()) {
-		ftype = (FunctionType *)func_value->getType()->getPointerElementType();
+	if (func_val->getType()->isPointerTy()
+		&& func_val->getType()->getPointerElementType()->isFunctionTy()) {
+		ftype = (FunctionType *)func_val->getType()->getPointerElementType();
 	} else {
 		CGERR_Calling_Non_Function_Value(context);
-		CGERR_setLineNum(context, dyn_cast<NExpression>(this)->line_number);
+		CGERR_setLineNum(context, dyn_cast<NExpression>(this)->lineno);
 		CGERR_showAllMsg(context);
+		return NULL;
 	}
+
 	proto = Function::Create(ftype,
 							 GlobalValue::InternalLinkage);
 
-	for (it = arguments.begin(), arg_it = ftype->param_begin();
-		 it != arguments.end(); it++, arg_it++) {
-		argType = (arg_it < ftype->param_end() ? ftype->getParamType(arg_it - ftype->param_begin())
+	for (expr_it = arguments.begin(), arg_it = ftype->param_begin();
+		 expr_it != arguments.end(); expr_it++, arg_it++) {
+		arg_type = (arg_it < ftype->param_end() ? ftype->getParamType(arg_it - ftype->param_begin())
 												: NULL);
-		if (argType && argType->isIntegerTy()) {
-			context.currentBitWidth = dyn_cast<IntegerType>(argType)->getIntegerBitWidth();
+		if (arg_type && arg_type->isIntegerTy()) {
+			context.currentBitWidth = dyn_cast<IntegerType>(arg_type)->getIntegerBitWidth();
 		}
 
-		arg_tmp = (**it).codeGen(context);
+		tmp = (**expr_it).codeGen(context);
 		context.currentBitWidth = 0;
 
-		args.push_back(NAssignmentExpr::doAssignCast(context, arg_tmp,
-													 argType, nullptr,
-													 dyn_cast<NExpression>(this)->line_number));
+		args.push_back(NAssignmentExpr::doAssignCast(context, tmp,
+													 arg_type, nullptr,
+													 dyn_cast<NExpression>(this)->lineno));
 	}
 
-	call = context.builder->CreateCall(func_value, makeArrayRef(args), "");
+	call = context.builder->CreateCall(func_val, makeArrayRef(args), "");
 	delete proto;
 
 	return call;
@@ -135,71 +138,70 @@ doBinaryCast(CodeGenContext& context, Value* &lhs, Value* &rhs)
 Value *
 NBinaryExpr::codeGen(CodeGenContext& context)
 {
-	Instruction::BinaryOps instr;
-	Value *lop;
-	Value *rop;
+	Value *lhs;
+	Value *rhs;
 
-	lop = lval.codeGen(context);
-	rop = rval.codeGen(context);
+	lhs = lval.codeGen(context);
+	rhs = rval.codeGen(context);
 
-	doBinaryCast(context, lop, rop);
+	doBinaryCast(context, lhs, rhs);
 
 	switch (op) {
 		case TLOR:
-			return context.builder->CreateOr(context.builder->CreateIsNotNull(lop, ""),
-											  context.builder->CreateIsNotNull(rop, ""), "");
+			return context.builder->CreateOr(context.builder->CreateIsNotNull(lhs, ""),
+											  context.builder->CreateIsNotNull(rhs, ""), "");
 		case TLAND:
-			return context.builder->CreateAnd(context.builder->CreateIsNotNull(lop, ""),
-											   context.builder->CreateIsNotNull(rop, ""), "");
+			return context.builder->CreateAnd(context.builder->CreateIsNotNull(lhs, ""),
+											   context.builder->CreateIsNotNull(rhs, ""), "");
 		case TOR:
-			return context.builder->CreateOr(lop, rop, "");	
+			return context.builder->CreateOr(lhs, rhs, "");	
 		case TXOR:
-			return context.builder->CreateXor(lop, rop, "");	
+			return context.builder->CreateXor(lhs, rhs, "");	
 		case TAND:
-			return context.builder->CreateAnd(lop, rop, "");
+			return context.builder->CreateAnd(lhs, rhs, "");
 	}
 
-	if (lop->getType()->isFloatingPointTy() && rop->getType()->isFloatingPointTy()) {
+	if (lhs->getType()->isFloatingPointTy() && rhs->getType()->isFloatingPointTy()) {
 		switch (op) {
-			case TADD: 		return context.builder->CreateFAdd(lop, rop, "");
-			case TSUB:	 	return context.builder->CreateFSub(lop, rop, "");
-			case TMUL: 		return context.builder->CreateFMul(lop, rop, "");
-			case TDIV: 		return context.builder->CreateFDiv(lop, rop, "");
-			case TMOD: 		return context.builder->CreateFRem(lop, rop, "");
+			case TADD: 		return context.builder->CreateFAdd(lhs, rhs, "");
+			case TSUB:	 	return context.builder->CreateFSub(lhs, rhs, "");
+			case TMUL: 		return context.builder->CreateFMul(lhs, rhs, "");
+			case TDIV: 		return context.builder->CreateFDiv(lhs, rhs, "");
+			case TMOD: 		return context.builder->CreateFRem(lhs, rhs, "");
 			case TSHL:
 			case TSHR:
 				CGERR_FP_Value_With_Shift_Operation(context);
-				CGERR_setLineNum(context, dyn_cast<NExpression>(this)->line_number);
+				CGERR_setLineNum(context, dyn_cast<NExpression>(this)->lineno);
 				CGERR_showAllMsg(context);
-				break;
-			case TCEQ:		return context.builder->CreateFCmpOEQ(lop, rop, "");
-			case TCNE:		return context.builder->CreateFCmpONE(lop, rop, "");
-			case TCLT:		return context.builder->CreateFCmpOLT(lop, rop, "");
-			case TCGT:		return context.builder->CreateFCmpOGT(lop, rop, "");
-			case TCLE:		return context.builder->CreateFCmpOLE(lop, rop, "");
-			case TCGE:		return context.builder->CreateFCmpOGE(lop, rop, "");
+				return NULL;
+			case TCEQ:		return context.builder->CreateFCmpOEQ(lhs, rhs, "");
+			case TCNE:		return context.builder->CreateFCmpONE(lhs, rhs, "");
+			case TCLT:		return context.builder->CreateFCmpOLT(lhs, rhs, "");
+			case TCGT:		return context.builder->CreateFCmpOGT(lhs, rhs, "");
+			case TCLE:		return context.builder->CreateFCmpOLE(lhs, rhs, "");
+			case TCGE:		return context.builder->CreateFCmpOGE(lhs, rhs, "");
 		}
-	} else if (lop->getType()->isIntegerTy() && rop->getType()->isIntegerTy()) {
+	} else if (lhs->getType()->isIntegerTy() && rhs->getType()->isIntegerTy()) {
 		switch (op) {
-			case TADD: 		return context.builder->CreateAdd(lop, rop, "");
-			case TSUB: 		return context.builder->CreateSub(lop, rop, "");
-			case TMUL: 		return context.builder->CreateMul(lop, rop, "");
-			case TDIV: 		return context.builder->CreateSDiv(lop, rop, "");
-			case TMOD: 		return context.builder->CreateSRem(lop, rop, "");
-			case TSHL:		return context.builder->CreateShl(lop, rop, "");
+			case TADD: 		return context.builder->CreateAdd(lhs, rhs, "");
+			case TSUB: 		return context.builder->CreateSub(lhs, rhs, "");
+			case TMUL: 		return context.builder->CreateMul(lhs, rhs, "");
+			case TDIV: 		return context.builder->CreateSDiv(lhs, rhs, "");
+			case TMOD: 		return context.builder->CreateSRem(lhs, rhs, "");
+			case TSHL:		return context.builder->CreateShl(lhs, rhs, "");
 			case TSHR:
-				return context.builder->CreateAShr(lop, rop, "");
-			case TCEQ:		return context.builder->CreateICmpEQ(lop, rop, "");
-			case TCNE:		return context.builder->CreateICmpNE(lop, rop, "");
-			case TCLT:		return context.builder->CreateICmpSLT(lop, rop, "");
-			case TCGT:		return context.builder->CreateICmpSGT(lop, rop, "");
-			case TCLE:		return context.builder->CreateICmpSLE(lop, rop, "");
-			case TCGE:		return context.builder->CreateICmpSGE(lop, rop, "");
+				return context.builder->CreateAShr(lhs, rhs, "");
+			case TCEQ:		return context.builder->CreateICmpEQ(lhs, rhs, "");
+			case TCNE:		return context.builder->CreateICmpNE(lhs, rhs, "");
+			case TCLT:		return context.builder->CreateICmpSLT(lhs, rhs, "");
+			case TCGT:		return context.builder->CreateICmpSGT(lhs, rhs, "");
+			case TCLE:		return context.builder->CreateICmpSLE(lhs, rhs, "");
+			case TCGE:		return context.builder->CreateICmpSGE(lhs, rhs, "");
 		}
 	}
 
 	CGERR_Unknown_Binary_Operation(context);
-	CGERR_setLineNum(context, dyn_cast<NExpression>(this)->line_number);
+	CGERR_setLineNum(context, dyn_cast<NExpression>(this)->lineno);
 	CGERR_showAllMsg(context);
 	return NULL;
 }
@@ -207,82 +209,83 @@ NBinaryExpr::codeGen(CodeGenContext& context)
 Value *
 NPrefixExpr::codeGen(CodeGenContext& context)
 {
-	Instruction::BinaryOps instr;
-	LoadInst *loader;
-	Value *V;
-	Type *T;
+	LoadInst *load_inst;
+	Value *val_tmp;
+	Type *val_type;
 
-	V = operand.codeGen(context);
+	val_tmp = operand.codeGen(context);
+	val_type = type.getType(context);
 
 	if (op == TMUL) {
-		return context.builder->CreateLoad(V, "");
+		return context.builder->CreateLoad(val_tmp, "");
 	} else if (op == TAND) {
 		if (context.isLValue()) {
-			return V;
+			return val_tmp;
 		} else {
-			if (loader = dyn_cast<LoadInst>(V)) {
-				loader->removeFromParent();
-				V = loader->getPointerOperand();
-				delete loader;
-				return V;
+			if (load_inst = dyn_cast<LoadInst>(val_tmp)) {
+				load_inst->removeFromParent();
+				val_tmp = load_inst->getPointerOperand();
+				delete load_inst;
+				return val_tmp;
 			} else {
 				CGERR_Get_Non_Resident_Value_Address(context);
-				CGERR_setLineNum(context, dyn_cast<NExpression>(this)->line_number);
+				CGERR_setLineNum(context, dyn_cast<NExpression>(this)->lineno);
 				CGERR_showAllMsg(context);
+				return NULL;
 			}
 		}
 	} else if (op == -1) {
-		return NAssignmentExpr::doAssignCast(context, V,
+		return NAssignmentExpr::doAssignCast(context, val_tmp,
 											  type.getType(context), nullptr,
-											  dyn_cast<NExpression>(this)->line_number);
+											  dyn_cast<NExpression>(this)->lineno);
 	} else if (op == TSIZEOF) {
-		T = type.getType(context);
-		if (!T->isVoidTy()) {
+		if (!val_type->isVoidTy()) {
 			return ConstantInt::get(Type::getInt64Ty(getGlobalContext()),
-									 getSizeOfJIT(T));
+									 getSizeOfJIT(val_type));
 		} else {
 			CGERR_Get_Sizeof_Void(context);
-			CGERR_setLineNum(context, dyn_cast<NExpression>(this)->line_number);
+			CGERR_setLineNum(context, dyn_cast<NExpression>(this)->lineno);
 			CGERR_showAllMsg(context);
+			return NULL;
 		}
 	} else if (op == TALIGNOF) {
-		T = type.getType(context);
-		if (!T->isVoidTy()) {
+		if (!val_type->isVoidTy()) {
 			return ConstantInt::get(Type::getInt64Ty(getGlobalContext()),
-									 getAlignOfJIT(T));
+									 getAlignOfJIT(val_type));
 		} else {
 			CGERR_Get_Alignof_Void(context);
-			CGERR_setLineNum(context, dyn_cast<NExpression>(this)->line_number);
+			CGERR_setLineNum(context, dyn_cast<NExpression>(this)->lineno);
 			CGERR_showAllMsg(context);
+			return NULL;
 		}
 	}
 
-	if (V->getType()->isFloatingPointTy()) {
+	if (val_type->isFloatingPointTy()) {
 		switch (op) {
 			case TADD:
-				return V;
+				return val_tmp;
 				break;
 			case TSUB:
-				return context.builder->CreateFSub(Constant::getNullValue(V->getType()),
-													V, "");
+				return context.builder->CreateFSub(Constant::getNullValue(val_type),
+													val_tmp, "");
 				break;
 		}
-	} else if (V->getType()->isIntegerTy()) {
+	} else if (val_type->isIntegerTy()) {
 		switch (op) {
 			case TADD:
-				return V;
+				return val_tmp;
 				break;
 			case TSUB:
-				return context.builder->CreateSub(Constant::getNullValue(V->getType()),
-												   V, "");
+				return context.builder->CreateSub(Constant::getNullValue(val_type),
+												   val_tmp, "");
 			case TNOT:
-				return context.builder->CreateNot(V, "");
+				return context.builder->CreateNot(val_tmp, "");
 				break;
 		}
 	}
 
 	CGERR_Unknown_Unary_Operation(context);
-	CGERR_setLineNum(context, dyn_cast<NExpression>(this)->line_number);
+	CGERR_setLineNum(context, dyn_cast<NExpression>(this)->lineno);
 	CGERR_showAllMsg(context);
 	return NULL;
 }
@@ -290,12 +293,12 @@ NPrefixExpr::codeGen(CodeGenContext& context)
 #define NUM_MIN(a, b) (a < b ? a : b)
 
 template <typename T>
-T getConstantArrayElementCastTo(ConstantDataSequential *CA, int i)
+T getConstantArrayElementCastTo(ConstantDataSequential *const_data_seq, int i)
 {
-	if (CA->getElementType()->isIntegerTy()) {
-		return CA->getElementAsInteger(i);
-	} else if (CA->getElementType()->isFloatingPointTy()) {
-		return CA->getElementAsDouble(i);
+	if (const_data_seq->getElementType()->isIntegerTy()) {
+		return const_data_seq->getElementAsInteger(i);
+	} else if (const_data_seq->getElementType()->isFloatingPointTy()) {
+		return const_data_seq->getElementAsDouble(i);
 	}
 
 	return 0;
@@ -303,62 +306,62 @@ T getConstantArrayElementCastTo(ConstantDataSequential *CA, int i)
 
 static Constant *
 doAlignArray(CodeGenContext& context, Constant *array, Type *dest_type,
-			 uint64_t size, int line_number)
+			 uint64_t size, int lineno)
 {
 	unsigned i;
-	ConstantDataSequential *CA = dyn_cast<ConstantDataSequential>(array);
+	ConstantDataSequential *const_data_seq = dyn_cast<ConstantDataSequential>(array);
 
 	switch (dest_type->getTypeID()) {
 		case Type::IntegerTyID:
 			switch (getBitWidth(dest_type)) {
 				case 8: {
-					vector<uint8_t> CT;
+					vector<uint8_t> const_arr;
 					for (i = 0; i < size; i++) {
-						CT.push_back(getConstantArrayElementCastTo<int>(CA, i));
+						const_arr.push_back(getConstantArrayElementCastTo<int>(const_data_seq, i));
 					}
-					return ConstantDataArray::get(getGlobalContext(), makeArrayRef(CT));
+					return ConstantDataArray::get(getGlobalContext(), makeArrayRef(const_arr));
 				}
 				case 16: {
-					vector<uint16_t> CT;
+					vector<uint16_t> const_arr;
 					for (i = 0; i < size; i++) {
-						CT.push_back(getConstantArrayElementCastTo<int>(CA, i));
+						const_arr.push_back(getConstantArrayElementCastTo<int>(const_data_seq, i));
 					}
-					return ConstantDataArray::get(getGlobalContext(), makeArrayRef(CT));
+					return ConstantDataArray::get(getGlobalContext(), makeArrayRef(const_arr));
 				}
 				case 32: {
-					vector<uint32_t> CT;
+					vector<uint32_t> const_arr;
 					for (i = 0; i < size; i++) {
-						CT.push_back(getConstantArrayElementCastTo<int>(CA, i));
+						const_arr.push_back(getConstantArrayElementCastTo<int>(const_data_seq, i));
 					}
-					return ConstantDataArray::get(getGlobalContext(), makeArrayRef(CT));
+					return ConstantDataArray::get(getGlobalContext(), makeArrayRef(const_arr));
 				}
 				case 64: {
-					vector<uint64_t> CT;
+					vector<uint64_t> const_arr;
 					for (i = 0; i < size; i++) {
-						CT.push_back(getConstantArrayElementCastTo<int>(CA, i));
+						const_arr.push_back(getConstantArrayElementCastTo<int>(const_data_seq, i));
 					}
-					return ConstantDataArray::get(getGlobalContext(), makeArrayRef(CT));
+					return ConstantDataArray::get(getGlobalContext(), makeArrayRef(const_arr));
 				}
 				default:
 					CGERR_Unsupport_Integer_Bitwidth_For_Data_Array(context);
-					CGERR_setLineNum(context, line_number);
+					CGERR_setLineNum(context, lineno);
 					CGERR_showAllMsg(context);
-					break;
+					return NULL;
 			}
 			break;
 		case Type::FloatTyID: {
-			vector<float> CT;
+			vector<float> const_arr;
 			for (i = 0; i < size; i++) {
-				CT.push_back(getConstantArrayElementCastTo<float>(CA, i));
+				const_arr.push_back(getConstantArrayElementCastTo<float>(const_data_seq, i));
 			}
-			return ConstantDataArray::get(getGlobalContext(), makeArrayRef(CT));
+			return ConstantDataArray::get(getGlobalContext(), makeArrayRef(const_arr));
 		}
 		case Type::DoubleTyID: {
-			vector<double> CT;
+			vector<double> const_arr;
 			for (i = 0; i < size; i++) {
-				CT.push_back(getConstantArrayElementCastTo<double>(CA, i));
+				const_arr.push_back(getConstantArrayElementCastTo<double>(const_data_seq, i));
 			}
-			return ConstantDataArray::get(getGlobalContext(), makeArrayRef(CT));
+			return ConstantDataArray::get(getGlobalContext(), makeArrayRef(const_arr));
 		}
 		default:
 			std::abort();
@@ -370,10 +373,10 @@ doAlignArray(CodeGenContext& context, Constant *array, Type *dest_type,
 
 Value *
 NAssignmentExpr::doAssignCast(CodeGenContext& context, Value *value,
-							  Type *variable_type, Value *variable, int line_number = -1)
+							  Type *variable_type, Value *variable, int lineno = -1)
 {
 	Type *value_type;
-	Value *tmp_V;
+	Value *val_tmp;
 
 	value_type = value->getType();
 
@@ -403,11 +406,13 @@ NAssignmentExpr::doAssignCast(CodeGenContext& context, Value *value,
 		} else if (isArrayType(value_type)
 					&& isArrayType(variable_type)
 					&& !context.currentBlock()) {
-			ArrayType *VET = dyn_cast<ArrayType>(value_type);
-			ArrayType *VAET = dyn_cast<ArrayType>(variable_type);
-			if (VET->getNumElements() != VAET->getNumElements()) {
-				value = doAlignArray(context, dyn_cast<Constant>(value), VAET->getArrayElementType(),
-									 VAET->getNumElements(), line_number);
+			ArrayType *val_elem_type = dyn_cast<ArrayType>(value_type);
+			ArrayType *var_elem_type = dyn_cast<ArrayType>(variable_type);
+			if (val_elem_type->getNumElements()
+				!= var_elem_type->getNumElements()) {
+				value = doAlignArray(context, dyn_cast<Constant>(value),
+									 var_elem_type->getArrayElementType(),
+									 var_elem_type->getNumElements(), lineno);
 			}
 
 			return value;
@@ -417,21 +422,20 @@ NAssignmentExpr::doAssignCast(CodeGenContext& context, Value *value,
 			return value;
 		} else if (isArrayPointerType(value_type)
 					&& isArrayPointerType(variable_type)) {
-			Type *VET = value_type->getPointerElementType();
-			Type *VAET = variable_type->getPointerElementType();
+			Type *val_elem_type = value_type->getPointerElementType();
 			if (!variable) {
 				std::abort();
 			}
 			context.builder->CreateMemCpy(variable, value,
-										  getSizeOfJIT(VET),
-										  getAlignOfJIT(VET), false);
+										  getSizeOfJIT(val_elem_type),
+										  getAlignOfJIT(val_elem_type), false);
 			return NULL;
 		} else if (isArrayPointerType(value_type) && isPointerType(variable_type)) {
-			tmp_V = dyn_cast<Value>(context.builder->CreateConstInBoundsGEP2_32(value, 0, 0, ""));
-			if (isSameType(tmp_V->getType(), variable_type)) {
-				return tmp_V;
+			val_tmp = dyn_cast<Value>(context.builder->CreateConstInBoundsGEP2_32(value, 0, 0, ""));
+			if (isSameType(val_tmp->getType(), variable_type)) {
+				return val_tmp;
 			}
-			return context.builder->CreateBitCast(tmp_V, variable_type, "");
+			return context.builder->CreateBitCast(val_tmp, variable_type, "");
 		} else {
 			return context.builder->CreateBitCast(value, variable_type, "");
 		}
@@ -452,31 +456,31 @@ NAssignmentExpr::doAssignCast(CodeGenContext& context, Value *value,
 Value *
 NAssignmentExpr::codeGen(CodeGenContext& context)
 {
-	Value *left;
-	Value *right;
+	Value *lhs;
+	Value *rhs;
 	Type *integer_type;
 
 	context.setLValue();
-	left = lval.codeGen(context);
+	lhs = lval.codeGen(context);
 	context.resetLValue();
 
-	if (isIntegerPointer(left)) {
-		integer_type = dyn_cast<IntegerType>(left->getType()->getPointerElementType());
+	if (isIntegerPointer(lhs)) {
+		integer_type = dyn_cast<IntegerType>(lhs->getType()->getPointerElementType());
 		context.currentBitWidth = integer_type->getIntegerBitWidth();
 	}
-	right = rval.codeGen(context);
+	rhs = rval.codeGen(context);
 	context.currentBitWidth = 0;
 
-	right = NAssignmentExpr::doAssignCast(context, right,
-										  (!isArrayPointer(left) ? left->getType()->getPointerElementType()
-																 : left->getType()), left,
-										  ((NExpression*)this)->line_number);
+	rhs = NAssignmentExpr::doAssignCast(context, rhs,
+										(!isArrayPointer(lhs) ? lhs->getType()->getPointerElementType()
+															  : lhs->getType()), lhs,
+										((NExpression*)this)->lineno);
 
-	if (!right) {
-		return right;
+	if (!rhs) {
+		return rhs;
 	}
 
-	return context.builder->CreateStore(right, left, false);
+	return context.builder->CreateStore(rhs, lhs, false);
 }
 
 Value *
@@ -501,8 +505,9 @@ NFieldExpr::codeGen(CodeGenContext& context)
 		struct_type = struct_value->getType()->getPointerElementType();
 	} else {
 		CGERR_Get_Non_Structure_Type_Field(context);
-		CGERR_setLineNum(context, dyn_cast<NExpression>(this)->line_number);
+		CGERR_setLineNum(context, dyn_cast<NExpression>(this)->lineno);
 		CGERR_showAllMsg(context);
+		return NULL;
 	}
 
 	if (!struct_type->getStructName().substr(0, strlen(UNION_PREFIX)).compare(UNION_PREFIX)) { // prefix is "union." ?
@@ -518,16 +523,18 @@ NFieldExpr::codeGen(CodeGenContext& context)
 												 "");
 		} else {
 			CGERR_Failed_To_Find_Field_Name(context, field_name.name.c_str());
-			CGERR_setLineNum(context, dyn_cast<NExpression>(this)->line_number);
+			CGERR_setLineNum(context, dyn_cast<NExpression>(this)->lineno);
 			CGERR_showAllMsg(context);
+			return NULL;
 		}
 	} else {
 		if (map.find(field_name.name) != map.end()) {
 			ret = context.builder->CreateStructGEP(struct_value, map[field_name.name], "");
 		} else {
 			CGERR_Failed_To_Find_Field_Name(context, field_name.name.c_str());
-			CGERR_setLineNum(context, dyn_cast<NExpression>(this)->line_number);
+			CGERR_setLineNum(context, dyn_cast<NExpression>(this)->lineno);
 			CGERR_showAllMsg(context);
+			return NULL;
 		}
 	}
 
@@ -564,8 +571,9 @@ NArrayExpr::codeGen(CodeGenContext& context)
 												 idx, "");
 	} else {
 		CGERR_Get_Non_Array_Element(context);
-		CGERR_setLineNum(context, dyn_cast<NExpression>(this)->line_number);
+		CGERR_setLineNum(context, dyn_cast<NExpression>(this)->lineno);
 		CGERR_showAllMsg(context);
+		return NULL;
 	}
 
 	return codeGenLoadValue(context, ret);

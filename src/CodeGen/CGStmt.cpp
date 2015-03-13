@@ -7,12 +7,18 @@
 Value*
 NReturnStatement::codeGen(CodeGenContext& context)
 {
-	Value *returnValue;
+	Value *tmp_val = expression.codeGen(context);
+	Value *ret_val;
 
-	returnValue = expression.codeGen(context);
-	context.setCurrentReturnValue(returnValue);
+	if (tmp_val) {
+		ret_val = NAssignmentExpr::doAssignCast(context, expression.codeGen(context),
+												context.currentBlock()->getParent()->getReturnType(),
+												NULL, ((NStatement*)this)->lineno);
+	} else {
+		return context.builder->CreateRetVoid();
+	}
 
-	return context.builder->CreateRet(returnValue);
+	return context.builder->CreateRet(ret_val);
 }
 
 #define setBlock(b) (context.pushBlock(b), \

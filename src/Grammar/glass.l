@@ -161,9 +161,7 @@ bool is_string = false;
 		*string_literal += '\'';
 	} else {
 		if (string_literal->size() > 1) {
-			ASTERR_Too_Much_Character();
-			ASTERR_setLineNumber();
-			ASTERR_showAllMsg();
+			ErrorMessage::tmpError(ASTERR_Too_Much_Characters());
 		}
 		yylval.character = string_literal->c_str()[0];
 		string_literal = NULL;

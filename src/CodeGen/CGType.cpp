@@ -12,13 +12,13 @@ static Type *typeOf(CodeGenContext &context, const NIdentifier& type)
 
 	if (context.types.find(STRUCT_PREFIX + type.name) != context.types.end()) {
 		CGERR_Suppose_To_Be_Struct_Type(context, type.name.c_str());
-		CGERR_setLineNum(context, type.line_number);
+		CGERR_setLineNum(context, type.lineno);
 		CGERR_showAllMsg(context);
 		return NULL;
 	}
 
 	CGERR_Unknown_Type_Name(context, type.name.c_str());
-	CGERR_setLineNum(context, type.line_number);
+	CGERR_setLineNum(context, type.lineno);
 	CGERR_showAllMsg(context);
 
 	return NULL;
@@ -62,23 +62,23 @@ Type*
 NTypeof::getType(CodeGenContext& context)
 {
 	IRBuilderBase::InsertPoint backup = context.builder->saveIP();
-	bool isLV_backup = context.isLValue();
-	Value *V;
+	bool is_lval = context.isLValue();
+	Value *tmp_val;
 
 	context.builder->SetInsertPoint(BasicBlock::Create(getGlobalContext())); // Set temp code container
 
 	context.resetLValue();
-	V = operand.codeGen(context);
-	if (isLV_backup) context.setLValue();
+	tmp_val = operand.codeGen(context);
+	if (is_lval) context.setLValue();
 
 	delete context.builder->GetInsertBlock();
 	context.builder->restoreIP(backup);
 
-	if (isArrayPointer(V)) {
-		return V->getType()->getArrayElementType();
+	if (isArrayPointer(tmp_val)) {
+		return tmp_val->getType()->getArrayElementType();
 	}
 
-	return V->getType();
+	return tmp_val->getType();
 }
 
 Type *
@@ -90,17 +90,18 @@ NIdentifierType::getType(CodeGenContext& context)
 Type *
 NBitFieldType::getType(CodeGenContext& context)
 {
-	if (N > 128) {
-		CGERR_Too_Huge_Integer(context, N);
-		CGERR_setLineNum(context, ((NType*)this)->line_number);
+	if (bit_length > 128) {
+		CGERR_Too_Huge_Integer(context, bit_length);
+		CGERR_setLineNum(context, ((NType*)this)->lineno);
 		CGERR_showAllMsg(context);
-	} else if (N == 0) {
+	} else if (bit_length == 0) {
 		CGERR_Integer_Type_With_Size_Of_Zero(context);
-		CGERR_setLineNum(context, ((NType*)this)->line_number);
+		CGERR_setLineNum(context, ((NType*)this)->lineno);
 		CGERR_showAllMsg(context);
+		return NULL;
 	}
 
-	return Type::getIntNTy(getGlobalContext(), N);
+	return Type::getIntNTy(getGlobalContext(), bit_length);
 }
 
 Type *
@@ -109,14 +110,14 @@ NDerivedType::getType(CodeGenContext& context)
 	int i;
 	Type *base_type = base.getType(context);
 
-	if (ptrDim == 0 && arrDim == 0) {
+	if (!ptr_dim) {
 		return base_type;
 	}
 
 	if (base_type->getTypeID() == Type::VoidTyID) {
 		base_type = Type::getInt8Ty(getGlobalContext()); // (void *) equals (char *)
 	}
-	for (i = 0; i < ptrDim; i++) {
+	for (i = 0; i < ptr_dim; i++) {
 		base_type = base_type->getPointerTo();
 	}
 
@@ -136,10 +137,10 @@ NStructType::getType(CodeGenContext& context)
 	}
 
 	CGERR_Unknown_Struct_Type(context, id->name.c_str());
-	CGERR_setLineNum(context, this->line_number);
+	CGERR_setLineNum(context, this->lineno);
 	CGERR_showAllMsg(context);
 
-	return nullptr;
+	return NULL;
 }
 
 Type *
@@ -155,7 +156,8 @@ NUnionType::getType(CodeGenContext& context)
 	}
 
 	CGERR_Unknown_Union_Type(context, id->name.c_str());
-	CGERR_setLineNum(context, this->line_number);
+	CGERR_setLineNum(context, this->lineno);
 	CGERR_showAllMsg(context);
-	return nullptr;
+
+	return NULL;
 }

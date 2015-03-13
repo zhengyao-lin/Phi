@@ -36,8 +36,6 @@ public:
 
 	virtual ~InitDeclarator()
 	{
-		// first (NIdentifier&) will be destoried in
-		// CGDecl.cpp NVariableDecl::codeGen() -> delete assign;
 		if (second) {
 			ArrayDim::const_iterator it;
 			for (it = second->begin();
@@ -56,20 +54,19 @@ typedef std::vector<Declarator *> DeclaratorList;
 // Type Specifier
 class NType {
 public:
-	int line_number = -1;
+	int lineno = -1;
 	virtual llvm::Type* getType(CodeGenContext& context);
 	virtual ~NType() {}
 };
 
 class NDerivedType : public NType {
 public:
-	int line_number = -1;
+	int lineno = -1;
 	NType& base;
-	int ptrDim;
-	int arrDim;
+	int ptr_dim;
 
-	NDerivedType(NType& base, int ptrDim, int arrDim) :
-	base(base), ptrDim(ptrDim), arrDim(arrDim) { }
+	NDerivedType(NType& base, int ptr_dim) :
+	base(base), ptr_dim(ptr_dim) { }
 
 	virtual ~NDerivedType()
 	{
@@ -127,25 +124,25 @@ public:
 // Node
 class Node {
 public:
-	int line_number = -1;
+	int lineno = -1;
 	virtual ~Node() {}
 	virtual llvm::Value* codeGen(CodeGenContext& context) { return NULL; }
 };
 class NStatement : public Node {
 public:
-	int line_number = -1;
+	int lineno = -1;
 	virtual ~NStatement() {}
 };
 class NExpression : public NStatement {
 public:
-	int line_number = -1;
+	int lineno = -1;
 	virtual ~NExpression() {}
 };
 
 // Primary Expression
 class NIdentifier : public NExpression {
 public:
-	int line_number = -1;
+	int lineno = -1;
 	std::string& name;
 
 	NIdentifier(std::string& name) :
@@ -161,7 +158,7 @@ public:
 
 class NIdentifierType : public NType {
 public:
-	int line_number = -1;
+	int lineno = -1;
 	NIdentifier& type;
 	
 	NIdentifierType(NIdentifier& type) :
@@ -177,12 +174,18 @@ public:
 
 // Constant
 class NVoid : public NExpression {
-	int line_number = -1;
+	int lineno = -1;
+
+	virtual llvm::Value* codeGen(CodeGenContext& context)
+	{
+		return NULL;
+	}
+
 	virtual ~NVoid() {}
 };
 class NInteger : public NExpression {
 public:
-	int line_number = -1;
+	int lineno = -1;
 	std::string& value;
 
 	NInteger(std::string& value) :
@@ -197,7 +200,7 @@ public:
 };
 class NChar : public NExpression {
 public:
-	int line_number = -1;
+	int lineno = -1;
 	char value;
 
 	NChar(char value) :
@@ -210,7 +213,7 @@ public:
 };
 class NBoolean : public NExpression {
 public:
-	int line_number = -1;
+	int lineno = -1;
 	bool value;
 
 	NBoolean(bool value) :
@@ -222,7 +225,7 @@ public:
 };
 class NDouble : public NExpression {
 public:
-	int line_number = -1;
+	int lineno = -1;
 	double value;
 
 	NDouble(double value) :
@@ -234,7 +237,7 @@ public:
 };
 class NString : public NExpression {
 public:
-	int line_number = -1;
+	int lineno = -1;
 	std::string value;
 
 	NString(const std::string& value) :
@@ -249,7 +252,7 @@ public:
 // Postfix Expression
 class NMethodCall : public NExpression {
 public:
-	int line_number = -1;
+	int lineno = -1;
 	NExpression& func_expr;
 	ExpressionList& arguments;
 
@@ -274,7 +277,7 @@ public:
 };
 class NFieldExpr : public NExpression {
 public:
-	int line_number = -1;
+	int lineno = -1;
 	NExpression& operand;
 	NIdentifier& field_name;
 
@@ -291,7 +294,7 @@ public:
 };
 class NArrayExpr : public NExpression {
 public:
-	int line_number = -1;
+	int lineno = -1;
 	NExpression& operand;
 	NExpression& index;
 
@@ -311,7 +314,7 @@ public:
 // Binary Expression
 class NBinaryExpr : public NExpression {
 public:
-	int line_number = -1;
+	int lineno = -1;
 	int op;
 	NExpression& lval;
 	NExpression& rval;
@@ -331,7 +334,7 @@ public:
 // Prefix Expression
 class NPrefixExpr : public NExpression {
 public:
-	int line_number = -1;
+	int lineno = -1;
 	int op;
 	NType& type;
 	NExpression& operand;
@@ -357,7 +360,7 @@ public:
 
 class NAssignmentExpr : public NExpression {
 public:
-	int line_number = -1;
+	int lineno = -1;
 	NExpression& lval;
 	NExpression& rval;
 
@@ -365,7 +368,7 @@ public:
 	lval(lval), rval(rval) { }
 
 	static llvm::Value *doAssignCast(CodeGenContext& context, llvm::Value *value,
-									  llvm::Type *variable_type, llvm::Value *variable, int line_number);
+									  llvm::Type *variable_type, llvm::Value *variable, int lineno);
 
 	virtual ~NAssignmentExpr()
 	{
@@ -378,7 +381,7 @@ public:
 
 class NTypeof : public NType {
 public:
-	int line_number = -1;
+	int lineno = -1;
 	NExpression& operand;
 	
 	NTypeof(NExpression& operand) :
@@ -394,7 +397,7 @@ public:
 
 class NReturnStatement : public NStatement {
 public:
-	int line_number = -1;
+	int lineno = -1;
 	NExpression& expression;
 
 	NReturnStatement(NExpression& expression) :
@@ -410,7 +413,7 @@ public:
 
 class NIfStatement : public NStatement {
 public:
-	int line_number = -1;
+	int lineno = -1;
 	NExpression& condition;
 	NStatement *if_true;
 	NStatement *if_else;
@@ -430,7 +433,7 @@ public:
 
 class NParamDecl : public NStatement {
 public:
-	int line_number = -1;
+	int lineno = -1;
 	NType& type;
 	NIdentifier& id;
 	ArrayDim& array_dim;
@@ -460,7 +463,7 @@ public:
 
 class NDelegateDecl : public NStatement {
 public:
-	int line_number = -1;
+	int lineno = -1;
 	NType& type;
 	NIdentifier& id;
 	bool has_vargs;
@@ -488,7 +491,7 @@ public:
 
 class NVariableDecl : public NStatement {
 public:
-	int line_number = -1;
+	int lineno = -1;
 	DeclSpecifier& var_specifier;
 	DeclaratorList *declarator_list;
 
@@ -521,7 +524,7 @@ public:
 
 class NStructDecl : public NStatement {
 public:
-	int line_number = -1;
+	int lineno = -1;
 	NIdentifier& id;
     VariableList& fields;
 
@@ -544,7 +547,7 @@ public:
 
 class NUnionDecl : public NStatement {
 public:
-	int line_number = -1;
+	int lineno = -1;
 	NIdentifier& id;
 	VariableList& fields;
 
@@ -567,7 +570,7 @@ public:
 
 class NStructType : public NType {
 public:
-	int line_number = -1;
+	int lineno = -1;
 	NStructDecl *struct_decl;
 	NIdentifier *id;
 
@@ -590,7 +593,7 @@ public:
 
 class NUnionType : public NType {
 public:
-	int line_number = -1;
+	int lineno = -1;
 	NUnionDecl *union_decl;
 	NIdentifier *id;
 
@@ -613,11 +616,11 @@ public:
 
 class NBitFieldType : public NType {
 public:
-	int line_number = -1;
-	unsigned N;
+	int lineno = -1;
+	unsigned bit_length;
 
-    NBitFieldType(unsigned N) :
-	N(N) { }
+    NBitFieldType(unsigned bit_length) :
+	bit_length(bit_length) { }
 
 	virtual ~NBitFieldType() {}
 
@@ -626,7 +629,7 @@ public:
 
 class NTypedefDecl : public NStatement {
 public:
-	int line_number = -1;
+	int lineno = -1;
 	NType& type;
 	NIdentifier& id;
 	ArrayDim& array_dim;
@@ -651,7 +654,7 @@ public:
 
 class NBlock : public NStatement {
 public:
-	int line_number = -1;
+	int lineno = -1;
 	StatementList statements;
 
 	NBlock() { }
@@ -669,7 +672,7 @@ public:
 
 class NFunctionDecl : public NStatement {
 public:
-	int line_number = -1;
+	int lineno = -1;
 	DeclSpecifier& func_specifier;
 	NIdentifier& id;
 	bool has_vargs;

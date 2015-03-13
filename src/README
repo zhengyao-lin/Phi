@@ -1,0 +1,57 @@
+# Coding Specification
+
+1.Identifiers:
+----Class/Structure/Union name:
+	1.Start with capital letter
+	2.Each word's first letter must be capital letter
+	3.No spaces or underlines between words
+	Example:
+		1.NFunctionDefinition
+		2.ErrorMessage
+		3.LValue
+
+----Function/Method name:
+	1.if the name only have one word(such as "create", "get"), this word must start with capital letter
+	2.if the name have two or above words, the first word start with lower-case letter while the following words start with capital letter
+	3.No spaces or underlines between words
+	Example:
+		1.doAssignCast
+		2.Create
+		3.getTypeId
+
+----Field/Local variable name:
+	1.all lower-case letter
+	2.use underlines between words
+	Example:
+		1.ptr_dim
+		2.value
+		3.line_number
+		4.lval
+
+----Generic type name:
+	1.all capital letter
+	2.number 1 to n(if have more than one type)
+	Example:
+		1.T
+		2.T1
+		3.T2
+
+Some specific abbreviations("opt" means this ab. only used in long name):
+1.value 		-> val // opt
+2.number 		-> num // opt
+3.pointer 		-> ptr
+4.array 		-> arr // opt
+5.string 		-> str // opt
+6.iterator 		-> it
+7.line number 	-> lineno
+8.function 		-> func
+9.temp			-> tmp
+10.argument		-> arg // opt
+11.expression	-> expr
+12.instruction	-> inst
+13.element		-> elem // opt
+14.return		-> ret
+15.index		-> idx // opt
+16.parameter	-> param
+17.specifier	-> spec // opt
+18.identifier	-> id // opt

@@ -4,7 +4,7 @@
     #include <cstdio>
     #include <cstdlib>
 	#include <cstring>
-	#define SETLINE(p) ((p)->line_number = current_line_number)
+	#define SETLINE(p) ((p)->lineno = current_line_number)
 
 	NBlock *AST = NULL;
 
@@ -107,13 +107,6 @@ external_declaration
 	{
 		$$ = $1;
 	}
-	/*| declarations
-	{
-		ASTERR_Missing_Semicolon();
-		ASTERR_setLineNumber();
-		ASTERR_showAllMsg();
-		$$ = NULL;
-	}*/
 	;
 
 declarations
@@ -230,7 +223,7 @@ type_specifier
 	}
 	| type_specifier ptr_dim
 	{
-		$$ = new NDerivedType(*$1, $2, 0);
+		$$ = new NDerivedType(*$1, $2);
 		SETLINE($$);
 	}
 	;

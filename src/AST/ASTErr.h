@@ -63,12 +63,16 @@ ASTERR_Missing_Semicolon(void)
 	return;
 }
 
-inline void
-ASTERR_Too_Much_Character(void)
+inline string
+ASTERR_Too_Much_Characters(void)
 {
-	error_messages.newMessage(new ErrorInfo(ErrorInfo::Error, true, ErrorInfo::Exit1,
-							  "Too much character"));
-	return;
+	return "Too much character";
+}
+
+inline string
+ASTERR_EOF_In_String(void)
+{
+	return "EOF in string literal";
 }
 
 #endif

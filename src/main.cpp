@@ -84,6 +84,9 @@ public:
 		extern FILE *yyin;
 		if (hasInput()) {
 			yyin = fopen(input_file.c_str(), "r");
+			if (!yyin) {
+				ErrorMessage::tmpError("Cannot find source file: " + input_file);
+			}
 		} else {
 			yyin = stdin;
 		}

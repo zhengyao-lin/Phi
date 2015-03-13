@@ -18,9 +18,9 @@ CGERR_showAllMsg(CodeGenContext& context)
 }
 
 inline void
-CGERR_setLineNum(CodeGenContext& context, int line_number)
+CGERR_setLineNum(CodeGenContext& context, int lineno)
 {
-	context.messages.setTopLineNumber(line_number);
+	context.messages.setTopLineNumber(lineno);
 	return;
 }
 
@@ -233,5 +233,13 @@ CGERR_Duplicate_Union_Type_Name(CodeGenContext& context)
 {
 	context.messages.newMessage(new ErrorInfo(ErrorInfo::Error, true, ErrorInfo::Exit1,
 											  "Duplicate union type name"));
+	return;
+}
+
+inline void
+CGERR_Missing_Return_Statement(CodeGenContext& context)
+{
+	context.messages.newMessage(new ErrorInfo(ErrorInfo::Error, true, ErrorInfo::Exit1,
+											  "Missing return statement"));
 	return;
 }
