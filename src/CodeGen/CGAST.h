@@ -48,6 +48,7 @@ typedef std::map<std::string, Type *> UnionFieldMap;
 class CodeGenContext {
     std::stack<CodeGenBlock *> blocks;
 	std::map<std::string, Value*> globals;
+	std::map<std::string, BasicBlock*> labels;
 	bool is_lvalue;
 
 public:
@@ -81,9 +82,31 @@ public:
     std::map<std::string, Value*>& getTopLocals() {
         return blocks.top()->locals;
     }
+    void setTopLocals(std::map<std::string, Value*> locals) {
+		if (currentBlock()) {
+        	blocks.top()->locals = locals;
+		}
+		return;
+    }
+    std::map<std::string, Value*> copyTopLocals() {
+		if (currentBlock()) {
+        	return blocks.top()->locals;
+		}
+		return *new std::map<std::string, Value*>();
+    }
     std::map<std::string, Value*>& getGlobals() {
         return globals;
     }
+	BasicBlock *getLabel(std::string name) {
+		if (labels.find(name) == labels.end()) {
+			return NULL;
+		}
+		return labels[name];
+	}
+	void setLabel(std::string name, BasicBlock *block) {
+		labels[name] = block;
+		return;
+	}
     BasicBlock *currentBlock() {
 		if (blocks.size()) {
         	return blocks.top()->block;

@@ -461,6 +461,33 @@ public:
 	// virtual llvm::Value* codeGen(CodeGenContext& context);
 };
 
+class NLabelStatement : public NStatement {
+public:
+	std::string label_name;
+	NStatement& statement;
+
+	NLabelStatement(std::string label_name, NStatement& statement) :
+	label_name(label_name), statement(statement) { }
+
+	virtual ~NLabelStatement()
+	{
+		delete &statement;
+	}
+
+	virtual llvm::Value* codeGen(CodeGenContext& context);
+};
+
+class NGotoStatement : public NStatement {
+public:
+	std::string label_name;
+
+	NGotoStatement(std::string label_name) :
+	label_name(label_name) { }
+
+	virtual ~NGotoStatement() {}
+	virtual llvm::Value* codeGen(CodeGenContext& context);
+};
+
 class NDelegateDecl : public NStatement {
 public:
 	int lineno = -1;

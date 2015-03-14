@@ -42,6 +42,7 @@ bool is_string = false;
 <INITIAL>"static"							return TOKEN(TSTATIC);
 <INITIAL>"typedef"						return TOKEN(TTYPEDEF);
 <INITIAL>"union"							return TOKEN(TUNION);
+<INITIAL>"goto"							return TOKEN(TGOTO);
 <INITIAL>"return"							return TOKEN(TRETURN);
 
  /* Assignment */

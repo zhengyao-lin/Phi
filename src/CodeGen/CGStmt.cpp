@@ -4,14 +4,33 @@
 #include "Grammar/Parser.hpp"
 #include "Inlines.h"
 
-Value*
+#define setBlock(b) (context.pushBlock(b), \
+					 context.builder->SetInsertPoint(context.currentBlock()))
+
+Value *
+NBlock::codeGen(CodeGenContext& context)
+{
+	std::map<std::string, Value*> local_backup;
+	StatementList::const_iterator it;
+	Value *last = NULL;
+
+	local_backup = context.copyTopLocals();
+	for (it = statements.begin(); it != statements.end(); it++) {
+		last = (**it).codeGen(context);
+	}
+	context.setTopLocals(local_backup);
+
+	return last;
+}
+
+Value *
 NReturnStatement::codeGen(CodeGenContext& context)
 {
 	Value *tmp_val = expression.codeGen(context);
 	Value *ret_val;
 
 	if (tmp_val) {
-		ret_val = NAssignmentExpr::doAssignCast(context, expression.codeGen(context),
+		ret_val = NAssignmentExpr::doAssignCast(context, tmp_val,
 												context.currentBlock()->getParent()->getReturnType(),
 												NULL, ((NStatement*)this)->lineno);
 	} else {
@@ -21,10 +40,7 @@ NReturnStatement::codeGen(CodeGenContext& context)
 	return context.builder->CreateRet(ret_val);
 }
 
-#define setBlock(b) (context.pushBlock(b), \
-					 context.builder->SetInsertPoint(context.currentBlock()))
-
-Value*
+Value *
 NIfStatement::codeGen(CodeGenContext& context)
 {
 	BasicBlock *orig_end_block;
@@ -52,8 +68,9 @@ NIfStatement::codeGen(CodeGenContext& context)
 									   context.currentEndBlock);
 	setBlock(if_true_block);
 	if_true->codeGen(context);
-	if (!if_true_block->getTerminator()) {
-		BranchInst::Create(end_block, if_true_block); // goto end block whether else block is exist ot not (if don't have a terminator)
+
+	if (!context.currentBlock()->getTerminator()) {
+		BranchInst::Create(end_block, context.currentBlock()); // goto end block whether else block is exist ot not (if don't have a terminator)
 	}
 	context.popBlock();
 
@@ -62,8 +79,8 @@ NIfStatement::codeGen(CodeGenContext& context)
 										   context.currentEndBlock);
 		setBlock(if_else_block);
 		if_else->codeGen(context);
-		if (!if_else_block->getTerminator()) {
-			BranchInst::Create(end_block, if_else_block); // goto end block (if don't have a terminator)
+		if (!context.currentBlock()->getTerminator()) {
+			BranchInst::Create(end_block, context.currentBlock()); // goto end block (if don't have a terminator)
 		}
 		context.popBlock();
 
@@ -82,4 +99,47 @@ NIfStatement::codeGen(CodeGenContext& context)
 	}
 
 	return BranchInst::Create(if_true_block, end_block, cond, orig_block);
+}
+
+Value *
+NLabelStatement::codeGen(CodeGenContext& context)
+{
+	BasicBlock *labeled_block;
+
+	if (!(labeled_block = context.getLabel(label_name))) {
+		labeled_block = BasicBlock::Create(getGlobalContext(), "",
+										   context.currentBlock()->getParent(),
+										   context.currentEndBlock);
+		context.setLabel(label_name, labeled_block);
+	} else {
+		labeled_block->moveAfter(context.currentBlock());
+	}
+
+	if (!context.currentBlock()->getTerminator()) {
+		BranchInst::Create(labeled_block, context.currentBlock());
+	}
+
+	setBlock(labeled_block);
+
+	return statement.codeGen(context);
+}
+
+Value *
+NGotoStatement::codeGen(CodeGenContext& context)
+{
+	BranchInst *br_inst;
+	BasicBlock *dest_block;
+
+	if (!(dest_block = context.getLabel(label_name))) {
+		dest_block = BasicBlock::Create(getGlobalContext(), "",
+									    context.currentBlock()->getParent(),
+									    context.currentEndBlock);
+		context.setLabel(label_name, dest_block);
+	}
+	br_inst = context.builder->CreateBr(dest_block);
+	setBlock(BasicBlock::Create(getGlobalContext(), "",
+								context.currentBlock()->getParent(),
+								context.currentEndBlock));
+
+	return br_inst;
 }

@@ -12,8 +12,25 @@ int fi(int n, int m)
 	return fi(n - 1, m) + fi(n, m -1);
 }
 
+static int ip = 0;
+
 int main()
 {
-	printf("%d\n", fi('\xf', 0xf));
+	printf("%d\n", fi(10, 10));
+
+	char *i = "hello";
+	printf("%s\n", i);
+
+	WHILE:
+	{
+		printf("%d\n", ip);
+		ip = ip + 1;
+	}
+	if (ip < 10) {
+		goto WHILE;
+	}
+
+	//printf("%d\n", i);
+
 	return 0;
 }

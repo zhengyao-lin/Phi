@@ -322,7 +322,7 @@ NFunctionDecl::codeGen(CodeGenContext& context)
 			return NULL;
 		}
 
-		bblock = BasicBlock::Create(getGlobalContext(), "entrypoint", function, 0);
+		bblock = BasicBlock::Create(getGlobalContext(), "", function, 0);
 		context.pushBlock(bblock);
 		context.builder->SetInsertPoint(context.currentBlock());
 

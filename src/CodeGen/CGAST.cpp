@@ -30,16 +30,3 @@ GenericValue CodeGenContext::runCode()
 
 	return v;
 }
-
-Value*
-NBlock::codeGen(CodeGenContext& context)
-{
-	StatementList::const_iterator it;
-	Value *last = NULL;
-
-	for (it = statements.begin(); it != statements.end(); it++) {
-		last = (**it).codeGen(context);
-	}
-
-	return last;
-}

@@ -55,7 +55,7 @@
 				TLBRAKT TRBRAKT TLAND TLOR TOR TXOR TIF TELSE
 %token <token> TADD TSUB TMUL TDIV TMOD TSHR TSHL
 %token <token> TRETURN TEXTERN TDELEGATE TSTRUCT TSTATIC
-				TTYPEDEF TUNION
+				TTYPEDEF TUNION TGOTO
 
 %type <identifier> identifier
 %type <expression> numeric string_literal expression
@@ -81,7 +81,7 @@
 %type <statement> statement external_declaration declarations variable_declaration
 				   function_definition ret_statement delegate_declaration
 				   struct_declaration union_declaration typedef_declaration
-				   selection_statement
+				   selection_statement labeled_statement jump_statement
 %type <token> assign_op unary_op
 %type <dim>	ptr_dim
 
@@ -471,6 +471,7 @@ statement
 	: variable_declaration TSEMICOLON
 	| function_definition
 	| ret_statement TSEMICOLON
+	| jump_statement TSEMICOLON
 	| expression TSEMICOLON
 	{
 		$$ = $<statement>1;
@@ -482,7 +483,7 @@ statement
 		SETLINE($$);
 	}
 	| selection_statement
-	//| labeled_statement
+	| labeled_statement
 	;
 
 selection_statement
@@ -498,12 +499,21 @@ selection_statement
 	}
 	;
 
- /*labeled_statement
+labeled_statement
 	: identifier TCOLON statement
 	{
-		$$
+		$$ = new NLabelStatement($1->name, *$3);
+		delete $1;
 	}
-	;*/
+	;
+
+jump_statement
+	: TGOTO identifier
+	{
+		$$ = new NGotoStatement($2->name);
+		delete $2;
+	}
+	;
 
 block
 	: TLBRACE statement_list TRBRACE
