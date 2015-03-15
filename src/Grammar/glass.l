@@ -80,6 +80,7 @@ bool is_string = false;
  /* Unary */
 <INITIAL>"&"								return TOKEN(TAND);
 <INITIAL>"~"								return TOKEN(TNOT);
+<INITIAL>"!"								return TOKEN(TLNOT);
 
  /* Binary */
 <INITIAL>"+"								return TOKEN(TADD);

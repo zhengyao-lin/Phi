@@ -30,22 +30,38 @@ int main()
 	char *i = "hello";
 	printf("%s\n", i);
 
-	WHILE:
+	/* do-while */
+	WHILE1:
 	{
 		printf("%d\n", ip);
 		ip = ip + 1;
 	}
 	if (ip < 10) {
-		goto WHILE;
+		goto WHILE1;
 	}
 
 	printf("%d\n", ip = 120);
 
-	int *j;
-	//j = malloc(sizeof(int) * 2);
+	{
+		int i[2][1][1];
 
-	*(j - 1 + 1) = 11;
-	printf("%d\n", *j);
+		**((i+1)[0]) = 10;
+		printf("%d\n", (i+1)[0][0][0]);
+	}
+
+	{
+		int i[2];
+
+		*(i+1) = 10;
+		printf("%d\n", i[1]);
+	}
+
+	{
+		int *i[2];
+
+		**(i+1) = 111;
+		printf("%d\n", i[1][0]);
+	}
 
 	//printf("%d\n", i);
 

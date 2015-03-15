@@ -7,6 +7,14 @@
 Value *
 codeGenLoadValue(CodeGenContext& context, Value *val)
 {
+	/*if (isArrayPointer(val)) {
+		Value *idxs[] = {
+			ConstantInt::get(Type::getInt64Ty(getGlobalContext()), 0),
+			ConstantInt::get(Type::getInt64Ty(getGlobalContext()), 0)
+		};
+		return context.builder->CreateInBoundsGEP(val, makeArrayRef(idxs), "");
+	}*/
+
 	if (context.isLValue()
 		|| isArrayPointer(val)) {
 		return val;
@@ -155,16 +163,14 @@ NBinaryExpr::codeGen(CodeGenContext& context)
 		if (isArrayPointer(lhs)) {
 			Value *idxs[] = {
 				ConstantInt::get(Type::getInt64Ty(getGlobalContext()), 0),
-				rhs
+				ConstantInt::get(Type::getInt64Ty(getGlobalContext()), 0)
 			};
-			return context.builder->CreateInBoundsGEP(lhs, makeArrayRef(idxs), "");
-		} else {
-			if (context.isLValue()
-				&& isPointerPointer(lhs)) {
-				lhs = context.builder->CreateLoad(lhs);
-			}
-			return context.builder->CreateInBoundsGEP(lhs, rhs, "");
+			lhs = context.builder->CreateInBoundsGEP(lhs, makeArrayRef(idxs), "");
+		} else if (context.isLValue()) {
+			lhs = context.builder->CreateLoad(lhs);
 		}
+
+		return context.builder->CreateInBoundsGEP(lhs, rhs, "");
 	}
 
 	doBinaryCast(context, lhs, rhs);
@@ -241,10 +247,19 @@ NPrefixExpr::codeGen(CodeGenContext& context)
 	type_expr_operand = type.getType(context);
 
 	if (op == TMUL) {
+		if (isArrayPointer(val_tmp)) {
+			Value *idxs[] = {
+				ConstantInt::get(Type::getInt64Ty(getGlobalContext()), 0),
+				ConstantInt::get(Type::getInt64Ty(getGlobalContext()), 0)
+			};
+			return context.builder->CreateInBoundsGEP(val_tmp,
+													   makeArrayRef(idxs), "");
+		}
 		if (context.isLValue()
 			&& typeid(operand) == typeid(NBinaryExpr)) { // *( expr [+-] expr ) = ?
 			return val_tmp;
 		}
+
 		return context.builder->CreateLoad(val_tmp, "");
 	} else if (op == TAND) {
 		if (context.isLValue()) {
@@ -289,6 +304,12 @@ NPrefixExpr::codeGen(CodeGenContext& context)
 	}
 
 	val_type = val_tmp->getType();
+
+	switch (op) {
+		case TLNOT:
+			return context.builder->CreateNot(val_tmp, "");
+			break;
+	}
 
 	if (val_type->isFloatingPointTy()) {
 		switch (op) {
@@ -495,8 +516,7 @@ NAssignmentExpr::codeGen(CodeGenContext& context)
 	context.resetLValue();
 
 	if (!isPointer(lhs)
-		|| (typeid(lval) != typeid(NPrefixExpr)
-			&& typeid(lval) != typeid(NIdentifier))) {
+		/*|| typeid(lval) == typeid(NBinaryExpr)*/) {
 		CGERR_Unassignable_LValue(context);
 		CGERR_setLineNum(context, ((NExpression*)this)->lineno);
 		CGERR_showAllMsg(context);
@@ -595,23 +615,30 @@ NArrayExpr::codeGen(CodeGenContext& context)
 		idx = index.codeGen(context);
 		context.setLValue();
 	} else {
-		idx = index.codeGen(context);
 		context.setLValue();
 		array_value = operand.codeGen(context);
 		context.resetLValue();
+		idx = index.codeGen(context);
 	}
 
 	idx = NAssignmentExpr::doAssignCast(context, idx, Type::getInt64Ty(getGlobalContext()), NULL,
 										dyn_cast<NExpression>(this)->lineno);
 
 	if (isArrayPointer(array_value)) {
-		Value *idxs[] = {
-			ConstantInt::get(Type::getInt64Ty(getGlobalContext()), 0),
-			idx
-		};
-		ret = context.builder->CreateInBoundsGEP(array_value, makeArrayRef(idxs), "");
-	} else if (isPointerPointer(array_value)) {
-		ret = context.builder->CreateInBoundsGEP(context.builder->CreateLoad(array_value, ""),
+		if (typeid(operand) == typeid(NBinaryExpr)) {
+			ret = context.builder->CreateInBoundsGEP(array_value, idx, "");
+		} else {
+			Value *idxs[] = {
+				ConstantInt::get(Type::getInt64Ty(getGlobalContext()), 0),
+				idx
+			};
+			ret = context.builder->CreateInBoundsGEP(array_value, makeArrayRef(idxs), "");
+		}
+	} else if (isPointer(array_value)) {
+		if (typeid(operand) != typeid(NBinaryExpr)) {
+			array_value = context.builder->CreateLoad(array_value);
+		}
+		ret = context.builder->CreateInBoundsGEP(array_value,
 												 idx, "");
 	} else {
 		CGERR_Get_Non_Array_Element(context);
