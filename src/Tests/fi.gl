@@ -1,4 +1,5 @@
 extern int printf(char *str, ...);
+extern void *malloc(int:64 size);
 
 int fi(int n, int m)
 {
@@ -37,6 +38,14 @@ int main()
 	if (ip < 10) {
 		goto WHILE;
 	}
+
+	printf("%d\n", ip = 120);
+
+	int j[3];
+	//j = malloc(sizeof(int) * 2);
+
+	*(j-2) = 11;
+	printf("%d\n", j[-2]);
 
 	//printf("%d\n", i);
 

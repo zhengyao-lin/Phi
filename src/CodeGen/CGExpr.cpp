@@ -144,6 +144,29 @@ NBinaryExpr::codeGen(CodeGenContext& context)
 	lhs = lval.codeGen(context);
 	rhs = rval.codeGen(context);
 
+	if (lhs->getType()->isPointerTy() && rhs->getType()->isIntegerTy()) {
+		rhs = NAssignmentExpr::doAssignCast(context, rhs, Type::getInt64Ty(getGlobalContext()), NULL,
+											dyn_cast<NExpression>(this)->lineno);
+		if (op == TSUB) {
+			rhs = context.builder->CreateSub(ConstantInt::get(rhs->getType(), 0),
+											 rhs, "");
+		}
+
+		if (isArrayPointer(lhs)) {
+			Value *idxs[] = {
+				ConstantInt::get(Type::getInt64Ty(getGlobalContext()), 0),
+				rhs
+			};
+			return context.builder->CreateInBoundsGEP(lhs, makeArrayRef(idxs), "");
+		} else {
+			if (context.isLValue()
+				&& isPointerPointer(lhs)) {
+				lhs = context.builder->CreateLoad(lhs);
+			}
+			return context.builder->CreateInBoundsGEP(lhs, rhs, "");
+		}
+	}
+
 	doBinaryCast(context, lhs, rhs);
 
 	switch (op) {
@@ -212,11 +235,16 @@ NPrefixExpr::codeGen(CodeGenContext& context)
 	LoadInst *load_inst;
 	Value *val_tmp;
 	Type *val_type;
+	Type *type_expr_operand;
 
 	val_tmp = operand.codeGen(context);
-	val_type = type.getType(context);
+	type_expr_operand = type.getType(context);
 
 	if (op == TMUL) {
+		if (context.isLValue()
+			&& !isPointerPointer(val_tmp)) {
+			return val_tmp;
+		}
 		return context.builder->CreateLoad(val_tmp, "");
 	} else if (op == TAND) {
 		if (context.isLValue()) {
@@ -236,12 +264,12 @@ NPrefixExpr::codeGen(CodeGenContext& context)
 		}
 	} else if (op == -1) {
 		return NAssignmentExpr::doAssignCast(context, val_tmp,
-											  type.getType(context), nullptr,
+											  type_expr_operand, nullptr,
 											  dyn_cast<NExpression>(this)->lineno);
 	} else if (op == TSIZEOF) {
-		if (!val_type->isVoidTy()) {
+		if (!type_expr_operand->isVoidTy()) {
 			return ConstantInt::get(Type::getInt64Ty(getGlobalContext()),
-									 getSizeOfJIT(val_type));
+									 getSizeOfJIT(type_expr_operand));
 		} else {
 			CGERR_Get_Sizeof_Void(context);
 			CGERR_setLineNum(context, dyn_cast<NExpression>(this)->lineno);
@@ -249,9 +277,9 @@ NPrefixExpr::codeGen(CodeGenContext& context)
 			return NULL;
 		}
 	} else if (op == TALIGNOF) {
-		if (!val_type->isVoidTy()) {
+		if (!type_expr_operand->isVoidTy()) {
 			return ConstantInt::get(Type::getInt64Ty(getGlobalContext()),
-									 getAlignOfJIT(val_type));
+									 getAlignOfJIT(type_expr_operand));
 		} else {
 			CGERR_Get_Alignof_Void(context);
 			CGERR_setLineNum(context, dyn_cast<NExpression>(this)->lineno);
@@ -259,6 +287,8 @@ NPrefixExpr::codeGen(CodeGenContext& context)
 			return NULL;
 		}
 	}
+
+	val_type = val_tmp->getType();
 
 	if (val_type->isFloatingPointTy()) {
 		switch (op) {
@@ -480,7 +510,9 @@ NAssignmentExpr::codeGen(CodeGenContext& context)
 		return rhs;
 	}
 
-	return context.builder->CreateStore(rhs, lhs, false);
+	context.builder->CreateStore(rhs, lhs, false);
+
+	return rhs;
 }
 
 Value *
@@ -559,6 +591,9 @@ NArrayExpr::codeGen(CodeGenContext& context)
 		array_value = operand.codeGen(context);
 		context.resetLValue();
 	}
+
+	idx = NAssignmentExpr::doAssignCast(context, idx, Type::getInt64Ty(getGlobalContext()), NULL,
+										dyn_cast<NExpression>(this)->lineno);
 
 	if (isArrayPointer(array_value)) {
 		Value *idxs[] = {

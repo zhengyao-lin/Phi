@@ -14,7 +14,8 @@ NInteger::codeGen(CodeGenContext& context)
 													   || value.c_str()[1] == 'X' ? 16 : 8)
 													: 10);
 	string str = value.substr(radix == 16 ? 2 : (radix == 8 ? 1 : 0 ));
-	unsigned bits = APInt::getBitsNeeded(str, radix); 
+	unsigned bits = APInt::getBitsNeeded(str, radix);
+	bits = (bits < 64 ? 64 : bits);
 	APInt apint(bits, str, radix);
 
 	return Constant::getIntegerValue(Type::getIntNTy(getGlobalContext(), bits),
