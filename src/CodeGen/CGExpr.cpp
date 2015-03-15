@@ -242,7 +242,7 @@ NPrefixExpr::codeGen(CodeGenContext& context)
 
 	if (op == TMUL) {
 		if (context.isLValue()
-			&& !isPointerPointer(val_tmp)) {
+			&& typeid(operand) == typeid(NBinaryExpr)) { // *( expr [+-] expr ) = ?
 			return val_tmp;
 		}
 		return context.builder->CreateLoad(val_tmp, "");
@@ -493,6 +493,15 @@ NAssignmentExpr::codeGen(CodeGenContext& context)
 	context.setLValue();
 	lhs = lval.codeGen(context);
 	context.resetLValue();
+
+	if (!isPointer(lhs)
+		|| (typeid(lval) != typeid(NPrefixExpr)
+			&& typeid(lval) != typeid(NIdentifier))) {
+		CGERR_Unassignable_LValue(context);
+		CGERR_setLineNum(context, ((NExpression*)this)->lineno);
+		CGERR_showAllMsg(context);
+		return NULL;
+	}
 
 	if (isIntegerPointer(lhs)) {
 		integer_type = dyn_cast<IntegerType>(lhs->getType()->getPointerElementType());

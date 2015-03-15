@@ -41,11 +41,11 @@ int main()
 
 	printf("%d\n", ip = 120);
 
-	int j[3];
+	int *j;
 	//j = malloc(sizeof(int) * 2);
 
-	*(j-2) = 11;
-	printf("%d\n", j[-2]);
+	*(j - 1 + 1) = 11;
+	printf("%d\n", *j);
 
 	//printf("%d\n", i);
 

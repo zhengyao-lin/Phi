@@ -86,6 +86,11 @@ isPointerType(Type *T)
 	return T->getTypeID() == Type::PointerTyID;
 }
 inline bool
+isPointer(Value *V)
+{
+	return isPointerType(V->getType());
+}
+inline bool
 isPointerPointer(Value *V)
 {
 	return (V->getType()->getTypeID() == Type::PointerTyID

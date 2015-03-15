@@ -259,3 +259,11 @@ CGERR_Redefinition_Of_Union(CodeGenContext& context, const char *name)
 											  "Redefinition of union \"$(name)\"", name));
 	return;
 }
+
+inline void
+CGERR_Unassignable_LValue(CodeGenContext& context)
+{
+	context.messages.newMessage(new ErrorInfo(ErrorInfo::Error, true, ErrorInfo::Exit1,
+											  "Unassignable left value"));
+	return;
+}
