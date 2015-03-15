@@ -158,46 +158,52 @@ NStructDecl::codeGen(CodeGenContext& context)
 	DeclSpecifier::const_iterator decl_spec_it;
 	string real_name = STRUCT_PREFIX + id.name;
 
-	if (context.types.find(real_name) != context.types.end()) { // duplicate
-		CGERR_Duplicate_Struct_Type_Name(context);
-		CGERR_setLineNum(context, getLine(this));
-		CGERR_showAllMsg(context);
-		return NULL;
+	if (context.types.find(real_name) != context.types.end()) {
+		if (context.structs.find(real_name) != context.structs.end()
+			&& fields) { // redefinition
+			CGERR_Redefinition_Of_Struct(context, id.name.c_str());
+			CGERR_setLineNum(context, getLine(this));
+			CGERR_showAllMsg(context);
+			return NULL;
+		}
+		struct_type = dyn_cast<StructType>(context.types[real_name]);
+	} else {
+		struct_type = StructType::create(getGlobalContext(), real_name);
+		context.types[real_name] = struct_type;
 	}
 
-	struct_type = StructType::create(getGlobalContext(), real_name);
-	context.types[real_name] = struct_type;
-
-	for (var_it = fields.begin(), i = 0;
-		 var_it != fields.end(); var_it++) {
-		for (decl_spec_it = (**var_it).var_specifier.begin();
-			 decl_spec_it != (**var_it).var_specifier.end(); decl_spec_it++) {
-			(**decl_spec_it).setSpecifier((**var_it).specifiers);
-		}
-
-		tmp_type = (**var_it).specifiers->type->getType(context);
-		for (decl_it = (**var_it).declarator_list->begin();
-			 decl_it != (**var_it).declarator_list->end(); decl_it++, i++) {
-			field_map[(*decl_it)->first.name] = i;
-
-			if ((**decl_it).second) {
-				field_types.push_back(setArrayType(context, tmp_type,
-												   *(**decl_it).second,
-												   getLine(*var_it)));
-			} else {
-				field_types.push_back(tmp_type);
+	if (fields) {
+		for (var_it = fields->begin(), i = 0;
+			 var_it != fields->end(); var_it++) {
+			for (decl_spec_it = (**var_it).var_specifier.begin();
+				 decl_spec_it != (**var_it).var_specifier.end(); decl_spec_it++) {
+				(**decl_spec_it).setSpecifier((**var_it).specifiers);
 			}
 
-			if ((**decl_it).third) {
-				CGERR_Initializer_Cannot_Be_In_Struct(context);
-				CGERR_setLineNum(context, getLine(*var_it));
-				CGERR_showAllMsg(context);
-				return NULL;
+			tmp_type = (**var_it).specifiers->type->getType(context);
+			for (decl_it = (**var_it).declarator_list->begin();
+				 decl_it != (**var_it).declarator_list->end(); decl_it++, i++) {
+				field_map[(*decl_it)->first.name] = i;
+
+				if ((**decl_it).second) {
+					field_types.push_back(setArrayType(context, tmp_type,
+													   *(**decl_it).second,
+													   getLine(*var_it)));
+				} else {
+					field_types.push_back(tmp_type);
+				}
+
+				if ((**decl_it).third) {
+					CGERR_Initializer_Cannot_Be_In_Struct(context);
+					CGERR_setLineNum(context, getLine(*var_it));
+					CGERR_showAllMsg(context);
+					return NULL;
+				}
 			}
 		}
+		struct_type->setBody(makeArrayRef(field_types), true);
+		context.structs[real_name] = field_map;
 	}
-	struct_type->setBody(makeArrayRef(field_types), true);
-	context.structs[real_name] = field_map;
 
 	return (Value *)struct_type;
 }
@@ -216,57 +222,63 @@ NUnionDecl::codeGen(CodeGenContext& context)
 	DeclSpecifier::const_iterator decl_spec_it;
 	string real_name = UNION_PREFIX + id.name;
 
-	if (context.types.find(real_name) != context.types.end()) { // duplicate
-		CGERR_Duplicate_Union_Type_Name(context);
-		CGERR_setLineNum(context, getLine(this));
-		CGERR_showAllMsg(context);
-		return NULL;
+	if (context.types.find(real_name) != context.types.end()) {
+		if (context.unions.find(real_name) != context.unions.end()
+			&& fields) { // redefinition
+			CGERR_Redefinition_Of_Union(context, id.name.c_str());
+			CGERR_setLineNum(context, getLine(this));
+			CGERR_showAllMsg(context);
+			return NULL;
+		}
+		union_type = dyn_cast<StructType>(context.types[real_name]);
+	} else {
+		union_type = StructType::create(getGlobalContext(), real_name);
+		context.types[real_name] = union_type;
 	}
 
-	Type *max_sized_type = NULL;
-	uint64_t max_size = 0;
+	if (fields) {
+		Type *max_sized_type = NULL;
+		uint64_t max_size = 0;
 
-	union_type = StructType::create(getGlobalContext(), real_name);
-	context.types[real_name] = union_type;
+		for (var_it = fields->begin(), i = 0;
+			 var_it != fields->end(); var_it++) {
+			for (decl_spec_it = (**var_it).var_specifier.begin();
+				 decl_spec_it != (**var_it).var_specifier.end();
+				 decl_spec_it++) {
+				(**decl_spec_it).setSpecifier((**var_it).specifiers);
+			}
 
-	for (var_it = fields.begin(), i = 0;
-		 var_it != fields.end(); var_it++) {
-		for (decl_spec_it = (**var_it).var_specifier.begin();
-			 decl_spec_it != (**var_it).var_specifier.end();
-			 decl_spec_it++) {
-			(**decl_spec_it).setSpecifier((**var_it).specifiers);
+			main_type = (**var_it).specifiers->type->getType(context);
+
+			for (decl_it = (**var_it).declarator_list->begin();
+				 decl_it != (**var_it).declarator_list->end(); decl_it++, i++) {
+
+				if ((**decl_it).second) {
+					tmp_type = setArrayType(context, main_type,
+										 *(**decl_it).second, getLine(*var_it));
+				} else {
+					tmp_type = main_type;
+				}
+
+
+				field_map[(**decl_it).first.name] = tmp_type;
+
+				if (getConstantIntExprJIT(ConstantExpr::getSizeOf(tmp_type)) > max_size) {
+					max_sized_type = tmp_type;
+				}
+
+				if ((**decl_it).third) {
+					CGERR_Initializer_Cannot_Be_In_Union(context);
+					CGERR_setLineNum(context, getLine(*var_it));
+					CGERR_showAllMsg(context);
+					return NULL;
+				}
+			}
 		}
-
-		main_type = (**var_it).specifiers->type->getType(context);
-
-		for (decl_it = (**var_it).declarator_list->begin();
-			 decl_it != (**var_it).declarator_list->end(); decl_it++, i++) {
-
-			if ((**decl_it).second) {
-				tmp_type = setArrayType(context, main_type,
-									 *(**decl_it).second, getLine(*var_it));
-			} else {
-				tmp_type = main_type;
-			}
-
-
-			field_map[(**decl_it).first.name] = tmp_type;
-
-			if (getConstantIntExprJIT(ConstantExpr::getSizeOf(tmp_type)) > max_size) {
-				max_sized_type = tmp_type;
-			}
-
-			if ((**decl_it).third) {
-				CGERR_Initializer_Cannot_Be_In_Union(context);
-				CGERR_setLineNum(context, getLine(*var_it));
-				CGERR_showAllMsg(context);
-				return NULL;
-			}
-		}
+		field_types.push_back(max_sized_type);
+		union_type->setBody(makeArrayRef(field_types), true);
+		context.unions[real_name] = field_map;
 	}
-	field_types.push_back(max_sized_type);
-	union_type->setBody(makeArrayRef(field_types), true);
-	context.unions[real_name] = field_map;
 
 	return (Value *)union_type;
 }

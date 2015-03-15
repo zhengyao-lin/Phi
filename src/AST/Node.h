@@ -553,20 +553,22 @@ class NStructDecl : public NStatement {
 public:
 	int lineno = -1;
 	NIdentifier& id;
-    VariableList& fields;
+    VariableList *fields;
 
-    NStructDecl(NIdentifier& id, VariableList& fields) :
+    NStructDecl(NIdentifier& id, VariableList *fields) :
 	id(id), fields(fields) { }
 
 	virtual ~NStructDecl()
 	{
 		delete &id;
 
-		VariableList::const_iterator it;
-		for (it = fields.begin(); it != fields.end(); it++) {
-			delete *it;
+		if (fields) {
+			VariableList::const_iterator it;
+			for (it = fields->begin(); it != fields->end(); it++) {
+				delete *it;
+			}
+			delete fields;
 		}
-		delete &fields;
 	}
 
     virtual llvm::Value* codeGen(CodeGenContext& context);
@@ -576,20 +578,22 @@ class NUnionDecl : public NStatement {
 public:
 	int lineno = -1;
 	NIdentifier& id;
-	VariableList& fields;
+	VariableList *fields;
 
-    NUnionDecl(NIdentifier& id, VariableList& fields) :
+    NUnionDecl(NIdentifier& id, VariableList *fields) :
 	id(id), fields(fields) { }
 
 	virtual ~NUnionDecl()
 	{
 		delete &id;
 
-		VariableList::const_iterator it;
-		for (it = fields.begin(); it != fields.end(); it++) {
-			delete *it;
+		if (fields) {
+			VariableList::const_iterator it;
+			for (it = fields->begin(); it != fields->end(); it++) {
+				delete *it;
+			}
+			delete fields;
 		}
-		delete &fields;
 	}
 
     virtual llvm::Value* codeGen(CodeGenContext& context);
@@ -599,20 +603,13 @@ class NStructType : public NType {
 public:
 	int lineno = -1;
 	NStructDecl *struct_decl;
-	NIdentifier *id;
 
     NStructType(NStructDecl *struct_decl) :
-	id(NULL), struct_decl(struct_decl) { }
-
-    NStructType(NIdentifier *id) :
-	id(id), struct_decl(NULL) { }
+	struct_decl(struct_decl) { }
 
 	virtual ~NStructType()
 	{
-		if (struct_decl)
-			delete struct_decl;
-		else
-			delete id;
+		delete struct_decl;
 	}
 
     virtual llvm::Type* getType(CodeGenContext& context);
@@ -622,20 +619,13 @@ class NUnionType : public NType {
 public:
 	int lineno = -1;
 	NUnionDecl *union_decl;
-	NIdentifier *id;
 
     NUnionType(NUnionDecl *union_decl) :
-	id(NULL), union_decl(union_decl) { }
-
-    NUnionType(NIdentifier *id) :
-	id(id), union_decl(NULL) { }
+	union_decl(union_decl) { }
 
 	virtual ~NUnionType()
 	{
-		if (union_decl)
-			delete union_decl;
-		else
-			delete id;
+		delete union_decl;
 	}
 
     virtual llvm::Type* getType(CodeGenContext& context);

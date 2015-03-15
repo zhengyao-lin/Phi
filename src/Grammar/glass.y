@@ -325,7 +325,12 @@ struct_declaration
 	  fields_declaration
 	  TRBRACE
 	{
-		$$ = new NStructDecl(*$2, *$4);
+		$$ = new NStructDecl(*$2, $4);
+		SETLINE($$);
+	}
+	| TSTRUCT identifier
+	{
+		$$ = new NStructDecl(*$2, NULL);
 		SETLINE($$);
 	}
 	| TSTRUCT TLBRACE
@@ -333,7 +338,7 @@ struct_declaration
 	  TRBRACE
 	{
 		$$ = new NStructDecl(*new NIdentifier(*new std::string("anon")),
-							 *$3);
+							 $3);
 		SETLINE($$);
 	}
 	;
@@ -343,7 +348,12 @@ union_declaration
 	  fields_declaration
 	  TRBRACE
 	{
-		$$ = new NUnionDecl(*$2, *$4);
+		$$ = new NUnionDecl(*$2, $4);
+		SETLINE($$);
+	}
+	| TUNION identifier
+	{
+		$$ = new NUnionDecl(*$2, NULL);
 		SETLINE($$);
 	}
 	| TUNION TLBRACE
@@ -351,7 +361,7 @@ union_declaration
 	  TRBRACE
 	{
 		$$ = new NUnionDecl(*new NIdentifier(*new std::string("anon")),
-							*$3);
+							$3);
 		SETLINE($$);
 	}
 	;
@@ -434,22 +444,17 @@ struct_type
 		$$ = new NStructType((NStructDecl*)$1);
 		SETLINE($$);
 	}
-	| TSTRUCT identifier
+	/*| TSTRUCT identifier
 	{
 		$$ = new NStructType($2);
 		SETLINE($$);
-	}
+	}*/
 	;
 
 union_type
 	: union_declaration
 	{
 		$$ = new NUnionType((NUnionDecl*)$1);
-		SETLINE($$);
-	}
-	| TUNION identifier
-	{
-		$$ = new NUnionType($2);
 		SETLINE($$);
 	}
 	;

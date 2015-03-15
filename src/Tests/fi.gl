@@ -14,8 +14,16 @@ int fi(int n, int m)
 
 static int ip = 0;
 
+struct incomp {
+	int i;
+};
+
 int main()
 {
+	{
+		struct incomp ic;
+		int ppp = ic.i;
+	}
 	printf("%d\n", fi(10, 10));
 
 	char *i = "hello";

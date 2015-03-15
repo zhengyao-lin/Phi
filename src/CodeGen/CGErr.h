@@ -243,3 +243,19 @@ CGERR_Missing_Return_Statement(CodeGenContext& context)
 											  "Missing return statement"));
 	return;
 }
+
+inline void
+CGERR_Redefinition_Of_Struct(CodeGenContext& context, const char *name)
+{
+	context.messages.newMessage(new ErrorInfo(ErrorInfo::Error, true, ErrorInfo::Exit1,
+											  "Redefinition of struct \"$(name)\"", name));
+	return;
+}
+
+inline void
+CGERR_Redefinition_Of_Union(CodeGenContext& context, const char *name)
+{
+	context.messages.newMessage(new ErrorInfo(ErrorInfo::Error, true, ErrorInfo::Exit1,
+											  "Redefinition of union \"$(name)\"", name));
+	return;
+}

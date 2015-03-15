@@ -131,14 +131,14 @@ NStructType::getType(CodeGenContext& context)
 		return (Type *)struct_decl->codeGen(context);
 	}
 
-	// struct ID VAR_NAME;
+	/*// struct ID VAR_NAME;
 	if (context.types.find(STRUCT_PREFIX + id->name) != context.types.end()) {
 		return context.types[STRUCT_PREFIX + id->name];
 	}
 
 	CGERR_Unknown_Struct_Type(context, id->name.c_str());
 	CGERR_setLineNum(context, this->lineno);
-	CGERR_showAllMsg(context);
+	CGERR_showAllMsg(context);*/
 
 	return NULL;
 }
@@ -149,15 +149,6 @@ NUnionType::getType(CodeGenContext& context)
 	if (union_decl) { // union ID { decls... } VAR_NAME;
 		return (Type *)union_decl->codeGen(context);
 	}
-
-	// union ID VAR_NAME;
-	if (context.types.find(UNION_PREFIX + id->name) != context.types.end()) {
-		return context.types[UNION_PREFIX + id->name];
-	}
-
-	CGERR_Unknown_Union_Type(context, id->name.c_str());
-	CGERR_setLineNum(context, this->lineno);
-	CGERR_showAllMsg(context);
 
 	return NULL;
 }
