@@ -143,7 +143,6 @@ public:
 		if (currentBlock()) {
 			blocks.top()->structs[name] = map;
 		} else {
-			std::cout << "set: " << name << endl;
 			structs[name] = map;
 		}
 

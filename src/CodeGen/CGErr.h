@@ -310,3 +310,11 @@ CGERR_Void_Should_Be_The_Only_Param(CodeGenContext& context)
 											  "void must be the first and only parameter if specified"));
 	return;
 }
+
+inline void
+CGERR_Redefinition_Of_Function(CodeGenContext& context, const char *name)
+{
+	context.messages.newMessage(new ErrorInfo(ErrorInfo::Error, true, ErrorInfo::Exit1,
+											  "Redefinition of function \"$(name)\"", name));
+	return;
+}

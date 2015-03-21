@@ -384,6 +384,13 @@ NFunctionDecl::codeGen(CodeGenContext& context)
 			return NULL;
 		}
 
+		if (function->begin() != function->end()) {
+			CGERR_Redefinition_Of_Function(context, id.name.c_str());
+			CGERR_setLineNum(context, getLine(this));
+			CGERR_showAllMsg(context);
+			return NULL;
+		}
+
 		bblock = BasicBlock::Create(getGlobalContext(), "", function, 0);
 		context.pushBlock(bblock);
 		context.builder->SetInsertPoint(context.currentBlock());

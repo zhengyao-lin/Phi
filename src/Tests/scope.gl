@@ -3,6 +3,7 @@ extern int printf(char *str, ...);
 namespace np
 {
 	int p = 10;
+	
 }
 
 int main()
