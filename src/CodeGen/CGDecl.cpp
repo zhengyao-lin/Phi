@@ -432,13 +432,13 @@ NFunctionDecl::codeGen(CodeGenContext& context)
 Value *
 NNameSpace::codeGen(CodeGenContext& context)
 {
-	context.current_namespace += name + ".";
+	context.current_namespace += name + "$";
 
 	if (block) {
 		block->codeGen(context);
 	}
 
-	context.current_namespace = context.current_namespace.substr(0, context.current_namespace.length() - (name + ".").length());
+	context.current_namespace = context.current_namespace.substr(0, context.current_namespace.length() - (name + "$").length());
 
 	return NULL;
 }

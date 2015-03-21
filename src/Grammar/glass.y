@@ -612,7 +612,7 @@ identifier
 	}
 	| identifier TDCOLON TIDENTIFIER
 	{
-		$$ = new NIdentifier(*new std::string($1->name + "." + *$3));
+		$$ = new NIdentifier(*new std::string($1->name + "$" + *$3));
 		SETLINE($$);
 		delete $1;
 	}
