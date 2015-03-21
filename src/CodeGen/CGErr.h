@@ -247,7 +247,7 @@ CGERR_Duplicate_Union_Type_Name(CodeGenContext& context)
 inline void
 CGERR_Missing_Return_Statement(CodeGenContext& context)
 {
-	context.messages.newMessage(new ErrorInfo(ErrorInfo::Error, true, ErrorInfo::Exit1,
+	context.messages.newMessage(new ErrorInfo(ErrorInfo::Warning, true, ErrorInfo::NoAct,
 											  "Missing return statement"));
 	return;
 }

@@ -420,7 +420,7 @@ NFunctionDecl::codeGen(CodeGenContext& context)
 				CGERR_Missing_Return_Statement(context);
 				CGERR_setLineNum(context, getLine(this));
 				CGERR_showAllMsg(context);
-				return NULL;
+				context.builder->CreateRet(Constant::getNullValue(function->getReturnType()));
 			}
 		}
 		context.popAllBlock();
