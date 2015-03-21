@@ -122,8 +122,8 @@ NVariableDecl::codeGen(CodeGenContext& context)
 			var = new GlobalVariable(*context.module, tmp_type, false,
 									 (specifiers->is_static ? llvm::GlobalValue::InternalLinkage
 															: llvm::GlobalValue::ExternalLinkage),
-									 init_value, (**decl_it).first.name); 
-			context.getGlobals()[(**decl_it).first.name] = var;
+									 init_value, context.formatName((**decl_it).first.name)); 
+			context.getGlobals()[context.formatName((**decl_it).first.name)] = var;
 		}
 	}
 
@@ -172,7 +172,7 @@ NDelegateDecl::codeGen(CodeGenContext& context)
 	checkParam(context, getLine(this), arg_types, arguments);
 
 	ftype = FunctionType::get(ret_type, makeArrayRef(arg_types), has_vargs);
-	context.setType(id.name, ftype->getPointerTo());
+	context.setType(context.formatName(id.name), ftype->getPointerTo());
 
 	return NULL;
 }
@@ -188,7 +188,7 @@ NStructDecl::codeGen(CodeGenContext& context)
 	StructType *struct_type;
 	Type *tmp_type;
 	DeclSpecifier::const_iterator decl_spec_it;
-	string real_name = STRUCT_PREFIX + id.name;
+	string real_name = STRUCT_PREFIX + context.formatName(id.name);
 
 	if (context.getType(real_name)) {
 		if (context.getStruct(real_name)
@@ -252,7 +252,7 @@ NUnionDecl::codeGen(CodeGenContext& context)
 	Type *tmp_type;
 	Type *main_type;
 	DeclSpecifier::const_iterator decl_spec_it;
-	string real_name = UNION_PREFIX + id.name;
+	string real_name = UNION_PREFIX + context.formatName(id.name);
 
 	if (context.getType(real_name)) {
 		if (context.getUnion(real_name)
@@ -322,7 +322,7 @@ NTypedefDecl::codeGen(CodeGenContext& context)
 
 	tmp_type = setArrayType(context, tmp_type, array_dim, getLine(this));
 
-	context.setType(id.name, tmp_type);
+	context.setType(context.formatName(id.name), tmp_type);
 
 	return NULL;
 }
@@ -352,11 +352,11 @@ NFunctionDecl::codeGen(CodeGenContext& context)
 
 	ftype = FunctionType::get(ret_type, makeArrayRef(arg_types), has_vargs);
 
-	if (!(function = context.module->getFunction(id.name))) {
+	if (!(function = context.module->getFunction(context.formatName(id.name)))) {
 		function = Function::Create(ftype,
 									(specifiers->is_static ? GlobalValue::InternalLinkage
 														   : GlobalValue::ExternalLinkage),
-									id.name.c_str(), context.module);
+									context.formatName(id.name), context.module);
 	} else {
 		for (param_type_it = arg_types.begin(), arg_it = function->arg_begin();
 			 param_type_it != arg_types.end() && arg_it != function->arg_end();
@@ -420,4 +420,18 @@ NFunctionDecl::codeGen(CodeGenContext& context)
 	}
 
 	return function;
+}
+
+Value *
+NNameSpace::codeGen(CodeGenContext& context)
+{
+	context.current_namespace += name + ".";
+
+	if (block) {
+		block->codeGen(context);
+	}
+
+	context.current_namespace = context.current_namespace.substr(0, context.current_namespace.length() - (name + ".").length());
+
+	return NULL;
 }

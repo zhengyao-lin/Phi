@@ -29,6 +29,7 @@ bool is_string = false;
 %start C_COMMENT CC_COMMENT STRING_LITERAL_STATE
 
 %%
+<INITIAL>"namespace"						return TOKEN(TNAMESPACE);
 <INITIAL>"if"								return TOKEN(TIF);
 <INITIAL>"else"							return TOKEN(TELSE);
 <INITIAL>"true"							return TOKEN(TTRUE);
@@ -72,6 +73,7 @@ bool is_string = false;
 <INITIAL>"^"								return TOKEN(TXOR);
 
 <INITIAL>"..."								return TOKEN(TELLIPSIS);
+<INITIAL>"::"								return TOKEN(TDCOLON);
 <INITIAL>":"								return TOKEN(TCOLON);
 <INITIAL>";"								return TOKEN(TSEMICOLON);
 <INITIAL>"."								return TOKEN(TDOT);

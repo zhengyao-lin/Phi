@@ -71,15 +71,17 @@ public:
 	ErrorMessage messages;
 	std::map<std::string, FieldMap> structs;
 	std::map<std::string, UnionFieldMap> unions;
-	int currentBitWidth; // for extra long integer
-	BasicBlock *currentEndBlock; // used for branch
+	int current_bit_width; // for extra long integer
+	BasicBlock *current_end_block; // used for branch
+	std::string current_namespace;
 
     CodeGenContext() {
         module = new Module("main", getGlobalContext());
 		builder = new IRBuilder<>(getGlobalContext());
 		types = initializeBasicType(*this);
-		currentBitWidth = 0;
-		currentEndBlock = NULL;
+		current_bit_width = 0;
+		current_end_block = NULL;
+		current_namespace = "";
 		resetLValue();
     }
 
@@ -117,8 +119,17 @@ public:
 
 	FieldMap *getStruct(std::string name) {
 		if (currentBlock()
+			&& blocks.top()->structs.find(formatName(name)) != blocks.top()->structs.end()) {
+			return &blocks.top()->structs[formatName(name)];
+		}
+
+		if (currentBlock()
 			&& blocks.top()->structs.find(name) != blocks.top()->structs.end()) {
 			return &blocks.top()->structs[name];
+		}
+
+		if (structs.find(formatName(name)) != structs.end()) {
+			return &structs[formatName(name)];
 		}
 
 		if (structs.find(name) != structs.end()) {
@@ -132,6 +143,7 @@ public:
 		if (currentBlock()) {
 			blocks.top()->structs[name] = map;
 		} else {
+			std::cout << "set: " << name << endl;
 			structs[name] = map;
 		}
 
@@ -140,8 +152,17 @@ public:
 
 	UnionFieldMap *getUnion(std::string name) {
 		if (currentBlock()
+			&& blocks.top()->unions.find(formatName(name)) != blocks.top()->unions.end()) {
+			return &blocks.top()->unions[formatName(name)];
+		}
+
+		if (currentBlock()
 			&& blocks.top()->unions.find(name) != blocks.top()->unions.end()) {
 			return &blocks.top()->unions[name];
+		}
+
+		if (unions.find(formatName(name)) != unions.end()) {
+			return &unions[formatName(name)];
 		}
 
 		if (unions.find(name) != unions.end()) {
@@ -163,8 +184,17 @@ public:
 
 	Type *getType(std::string name) {
 		if (currentBlock()
+			&& blocks.top()->local_types.find(formatName(name)) != blocks.top()->local_types.end()) {
+			return blocks.top()->local_types[formatName(name)];
+		}
+
+		if (currentBlock()
 			&& blocks.top()->local_types.find(name) != blocks.top()->local_types.end()) {
 			return blocks.top()->local_types[name];
+		}
+
+		if (types.find(formatName(name)) != types.end()) {
+			return types[formatName(name)];
 		}
 
 		if (types.find(name) != types.end()) {
@@ -182,6 +212,12 @@ public:
 		}
 
 		return;
+	}
+
+	inline std::string
+	formatName(std::string name)
+	{
+		return current_namespace + name;
 	}
 
 	void setLabel(std::string name, BasicBlock *block) {

@@ -28,22 +28,27 @@ NIdentifier::codeGen(CodeGenContext& context)
 {
 	Function *func;
 
-	if (context.getTopLocals().find(name) == context.getTopLocals().end()) {
-		if (context.getGlobals().find(name) == context.getGlobals().end()) {
-			if (func = context.module->getFunction(name)) {
-				return func;
-			} else {
-				CGERR_Undeclared_Identifier(context, name.c_str());
-				CGERR_setLineNum(context, this->lineno);
-				CGERR_showAllMsg(context);
-				return NULL;
-			}
-		} else {
-			return codeGenLoadValue(context, context.getGlobals()[name]);
-		}
+	if (context.getGlobals().find(context.formatName(name)) != context.getGlobals().end()) {
+		return codeGenLoadValue(context, context.getGlobals()[context.formatName(name)]);
 	}
 
-	return codeGenLoadValue(context, context.getTopLocals()[name]);
+	if (context.getGlobals().find(name) != context.getGlobals().end()) {
+		return codeGenLoadValue(context, context.getGlobals()[name]);
+	}
+
+	if (context.getTopLocals().find(name) != context.getTopLocals().end()) {
+		return codeGenLoadValue(context, context.getTopLocals()[name]);
+	}
+
+	if ((func = context.module->getFunction(context.formatName(name)))
+		|| (func = context.module->getFunction(name))) {
+		return func;
+	}
+
+	CGERR_Undeclared_Identifier(context, name.c_str());
+	CGERR_setLineNum(context, this->lineno);
+	CGERR_showAllMsg(context);
+	return NULL;
 }
 
 Value *
@@ -85,11 +90,11 @@ NMethodCall::codeGen(CodeGenContext& context)
 		arg_type = (arg_it < ftype->param_end() ? ftype->getParamType(arg_it - ftype->param_begin())
 												: NULL);
 		if (arg_type && arg_type->isIntegerTy()) {
-			context.currentBitWidth = dyn_cast<IntegerType>(arg_type)->getIntegerBitWidth();
+			context.current_bit_width = dyn_cast<IntegerType>(arg_type)->getIntegerBitWidth();
 		}
 
 		tmp = (**expr_it).codeGen(context);
-		context.currentBitWidth = 0;
+		context.current_bit_width = 0;
 
 		args.push_back(NAssignmentExpr::doAssignCast(context, tmp,
 													 arg_type, nullptr,
@@ -533,10 +538,10 @@ NAssignmentExpr::codeGen(CodeGenContext& context)
 
 	if (isIntegerPointer(lhs)) {
 		integer_type = dyn_cast<IntegerType>(lhs->getType()->getPointerElementType());
-		context.currentBitWidth = integer_type->getIntegerBitWidth();
+		context.current_bit_width = integer_type->getIntegerBitWidth();
 	}
 	rhs = rval.codeGen(context);
-	context.currentBitWidth = 0;
+	context.current_bit_width = 0;
 
 	rhs = NAssignmentExpr::doAssignCast(context, rhs,
 										(!isArrayPointer(lhs) ? lhs->getType()->getPointerElementType()
@@ -581,9 +586,17 @@ NFieldExpr::codeGen(CodeGenContext& context)
 
 	if (!struct_type->getStructName().substr(0, strlen(UNION_PREFIX)).compare(UNION_PREFIX)) { // prefix is "union." ?
 		is_union_flag = true;
-		union_map = *context.getUnion(struct_type->getStructName());
+		if (context.getUnion(struct_type->getStructName())) {
+			union_map = *context.getUnion(struct_type->getStructName());
+		} else {
+			abort();
+		}
 	} else {
-		map = *context.getStruct(struct_type->getStructName());
+		if (context.getStruct(struct_type->getStructName())) {
+			map = *context.getStruct(struct_type->getStructName());
+		} else {
+			abort();
+		}
 	}
 
 	if (is_union_flag) {

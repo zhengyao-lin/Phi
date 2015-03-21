@@ -15,36 +15,36 @@ int fi(int n, int m)
 
 static int ip = 0;
 
-struct incomp {
-	int i;
-};
-
-typedef struct occ { double ppp; } occt;
-
-int env2(int i)
-{
-	occt obj;
-	printf("%f\n", obj.ppp = 10);
-
-	return 0;
-}
-
 delegate int nnn(double ttt);
+
+namespace sd {
+	namespace subtype {
+		typedef struct occ { double ppp; } occt;
+		struct incomp {
+			int i;
+		};
+	}
+	char nsp_array[10];
+	int env2(int i)
+	{
+		subtype::occt obj;
+		printf("%f\n", obj.ppp = 10);
+
+		return 0;
+	}
+}
 
 int main()
 {
 	//typedef struct occ { int iii; } occt;
-	delegate int nnn(int ttt);
+	struct sd::subtype::incomp oo;
 
-	nnn i = env2;
-	i(10);
-
-	occt obj;
-	printf("%f\n", obj.ppp = 1000);
+	sd::subtype::occt obj;
+	printf("%d\n", sd::nsp_array[9] = 1000);
 
 	{
-		struct incomp ic;
-		int ppp = ic.i;
+		//struct incomp ic;
+		//int ppp = ic.i;
 	}
 	printf("%d\n", fi(10, 10));
 

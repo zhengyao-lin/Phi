@@ -728,4 +728,22 @@ public:
 	virtual llvm::Value* codeGen(CodeGenContext& context);
 };
 
+class NNameSpace : public NStatement {
+public:
+	std::string& name;
+	NBlock *block;
+
+	NNameSpace(std::string& name, NBlock *block) :
+	name(name), block(block) { }
+
+	virtual ~NNameSpace()
+	{
+		delete &name;
+		if (block)
+			delete block;
+	}
+
+	virtual llvm::Value* codeGen(CodeGenContext& context);
+};
+
 #endif

@@ -54,7 +54,7 @@
 				TAND TNOT TSIZEOF TALIGNOF TTYPEOF TARROW
 			    TELLIPSIS TCOLON TSEMICOLON TCOMMA TDOT
 				TLBRAKT TRBRAKT TLAND TLOR TOR TXOR TIF TELSE
-				TLNOT
+				TLNOT TNAMESPACE TDCOLON
 %token <token> TADD TSUB TMUL TDIV TMOD TSHR TSHL
 %token <token> TRETURN TEXTERN TDELEGATE TSTRUCT TSTATIC
 				TTYPEDEF TUNION TGOTO
@@ -79,11 +79,12 @@
 %type <declarator> init_declarator
 %type <declarator_list> declarator_list
 %type <param_declaration> param_declaration
-%type <block> statement_list block
+%type <block> statement_list block in_namespace_declaration_list
 %type <statement> statement external_declaration declarations variable_declaration
 				   function_definition ret_statement delegate_declaration
 				   struct_declaration union_declaration typedef_declaration
 				   selection_statement labeled_statement jump_statement
+				   namespace_declaration in_namespace_declaration
 %type <token> assign_op unary_op
 %type <dim>	ptr_dim
 
@@ -102,12 +103,59 @@ compile_unit
 	}
 	;
 
+namespace_declaration
+	: TNAMESPACE identifier TLBRACE in_namespace_declaration_list TRBRACE
+	{
+		$$ = new NNameSpace(*new std::string($2->name), $4);
+		delete $2;
+	}
+	| TNAMESPACE identifier TLBRACE /* Blank */ TRBRACE
+	{
+		$$ = new NNameSpace(*new std::string($2->name), NULL);
+		delete $2;
+	}
+	;
+
+in_namespace_declaration_list
+	: in_namespace_declaration
+	{
+		$$ = new NBlock();
+		$$->statements.push_back($1);
+	}
+	| in_namespace_declaration_list in_namespace_declaration
+	{
+		$1->statements.push_back($2);
+		$$ = $1;
+	}
+	;
+
+in_namespace_declaration
+	: function_definition
+	| namespace_declaration
+	| declarations TSEMICOLON
+	;
+
 external_declaration
 	: function_definition
+	{
+		/*NFunctionDecl *func_decl = new NFunctionDecl(((NFunctionDecl *)$1)->func_specifier,
+													 ((NFunctionDecl *)$1)->id,
+													 ((NFunctionDecl *)$1)->arguments, NULL,
+													 ((NFunctionDecl *)$1)->has_vargs);
+		SETLINE(func_decl);
+		main_parser->addDecl(func_decl);*/
+
+		$$ = $1;
+	}
+	| namespace_declaration
+	{
+		//main_parser->addDecl($1);
+		$$ = $1;
+	}
 	| declarations TSEMICOLON
 	{
-		main_parser->addDecl($1);
-		$$ = NULL;
+		//main_parser->addDecl($1);
+		$$ = $1;
 	}
 	;
 
@@ -164,37 +212,23 @@ ellipsis_token:TCOMMA TELLIPSIS;
 function_definition
 	: declaration_specifier identifier TLPAREN function_arguments TRPAREN block
 	{
-		NFunctionDecl *func_decl = new NFunctionDecl(*$1, *$2, *$4, NULL, false);
-		SETLINE(func_decl);
-		main_parser->addDecl(func_decl);
-
 		$$ = new NFunctionDecl(*$1, *$2, *$4, $6, false);
 		SETLINE($$);
 	}
 	| declaration_specifier identifier TLPAREN function_arguments TRPAREN TSEMICOLON
 	{
-		NFunctionDecl *func_decl = new NFunctionDecl(*$1, *$2, *$4, NULL, false);
-		SETLINE(func_decl);
-		main_parser->addDecl(func_decl);
-
-		$$ = NULL;
+		$$ = new NFunctionDecl(*$1, *$2, *$4, NULL, false);
+		SETLINE($$);
 	}
 	| declaration_specifier identifier TLPAREN function_arguments ellipsis_token TRPAREN block
 	{
-		NFunctionDecl *func_decl = new NFunctionDecl(*$1, *$2, *$4, NULL, true);
-		SETLINE(func_decl);
-		main_parser->addDecl(func_decl);
-
 		$$ = new NFunctionDecl(*$1, *$2, *$4, $7, true);
 		SETLINE($$);
 	}
 	| declaration_specifier identifier TLPAREN function_arguments ellipsis_token TRPAREN TSEMICOLON
 	{
-		NFunctionDecl *func_decl = new NFunctionDecl(*$1, *$2, *$4, NULL, true);
-		SETLINE(func_decl);
-		main_parser->addDecl(func_decl);
-
-		$$ = NULL;
+		$$ = new NFunctionDecl(*$1, *$2, *$4, NULL, true);
+		SETLINE($$);
 	}
 	;
 
@@ -575,6 +609,12 @@ identifier
 	{
 		$$ = new NIdentifier(*$1);
 		SETLINE($$);
+	}
+	| identifier TDCOLON TIDENTIFIER
+	{
+		$$ = new NIdentifier(*new std::string($1->name + "." + *$3));
+		SETLINE($$);
+		delete $1;
 	}
 	;
 

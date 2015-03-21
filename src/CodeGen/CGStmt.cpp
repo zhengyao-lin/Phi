@@ -53,7 +53,7 @@ NIfStatement::codeGen(CodeGenContext& context)
 
 	// record info
 	orig_block = context.currentBlock();
-	orig_end_block = context.currentEndBlock;
+	orig_end_block = context.current_end_block;
 
 	cond = context.builder->CreateIsNotNull(condition.codeGen(context), "");
 
@@ -63,10 +63,10 @@ NIfStatement::codeGen(CodeGenContext& context)
 	if (orig_end_block) {
 		BranchInst::Create(orig_end_block, end_block); // goto next end
 	}
-	context.currentEndBlock = end_block;
+	context.current_end_block = end_block;
 
 	if_true_block = BasicBlock::Create(getGlobalContext(), "", orig_block->getParent(),
-									   context.currentEndBlock);
+									   context.current_end_block);
 	setBlock(if_true_block);
 	if_true->codeGen(context);
 
@@ -77,7 +77,7 @@ NIfStatement::codeGen(CodeGenContext& context)
 
 	if (if_else) {
 		if_else_block = BasicBlock::Create(getGlobalContext(), "", orig_block->getParent(),
-										   context.currentEndBlock);
+										   context.current_end_block);
 		setBlock(if_else_block);
 		if_else->codeGen(context);
 		if (!context.currentBlock()->getTerminator()) {
@@ -85,7 +85,7 @@ NIfStatement::codeGen(CodeGenContext& context)
 		}
 		context.popBlock();
 
-		context.currentEndBlock = orig_end_block; // restore info
+		context.current_end_block = orig_end_block; // restore info
 		setBlock(end_block); // insert other insts at end block
 
 		return BranchInst::Create(if_true_block, if_else_block, cond, orig_block); // insert branch at original block
@@ -93,7 +93,7 @@ NIfStatement::codeGen(CodeGenContext& context)
 
 	// else (no if_else)
 
-	context.currentEndBlock = orig_end_block; // restore info
+	context.current_end_block = orig_end_block; // restore info
 	setBlock(end_block); // insert other insts at end block
 	if (end_block->getTerminator()) {
 		context.builder->SetInsertPoint(end_block->getTerminator());
@@ -110,7 +110,7 @@ NLabelStatement::codeGen(CodeGenContext& context)
 	if (!(labeled_block = context.getLabel(label_name))) {
 		labeled_block = BasicBlock::Create(getGlobalContext(), "",
 										   context.currentBlock()->getParent(),
-										   context.currentEndBlock);
+										   context.current_end_block);
 		context.setLabel(label_name, labeled_block);
 	} else {
 		labeled_block->moveAfter(context.currentBlock());
@@ -134,13 +134,13 @@ NGotoStatement::codeGen(CodeGenContext& context)
 	if (!(dest_block = context.getLabel(label_name))) {
 		dest_block = BasicBlock::Create(getGlobalContext(), "",
 									    context.currentBlock()->getParent(),
-									    context.currentEndBlock);
+									    context.current_end_block);
 		context.setLabel(label_name, dest_block);
 	}
 	br_inst = context.builder->CreateBr(dest_block);
 	setBlock(BasicBlock::Create(getGlobalContext(), "",
 								context.currentBlock()->getParent(),
-								context.currentEndBlock));
+								context.current_end_block));
 
 	return br_inst;
 }
