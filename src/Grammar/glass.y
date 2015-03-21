@@ -1,12 +1,13 @@
 %{
 	#include "AST/Node.h"
 	#include "AST/ASTErr.h"
+	#include "AST/Parser.h"
     #include <cstdio>
     #include <cstdlib>
 	#include <cstring>
 	#define SETLINE(p) ((p)->lineno = current_line_number)
 
-	NBlock *AST = NULL;
+	extern Parser *main_parser;
 
 	void
 	ASTERR_Undefined_Syntax_Error(const char *token) {
@@ -58,7 +59,7 @@
 %token <token> TRETURN TEXTERN TDELEGATE TSTRUCT TSTATIC
 				TTYPEDEF TUNION TGOTO
 
-%type <identifier> identifier
+%type <identifier> identifier identifier_opt
 %type <expression> numeric string_literal expression
 					assignment_expression unary_expression primary_expression
 					postfix_expression conditional_expression additive_expression
@@ -93,12 +94,11 @@
 compile_unit
 	: external_declaration
 	{
-		AST = new NBlock();
-		AST->statements.push_back($1);
+		main_parser->getAST()->statements.push_back($1);
 	}
 	| compile_unit external_declaration
 	{
-		AST->statements.push_back($2);
+		main_parser->getAST()->statements.push_back($2);
 	}
 	;
 
@@ -106,7 +106,8 @@ external_declaration
 	: function_definition
 	| declarations TSEMICOLON
 	{
-		$$ = $1;
+		main_parser->addDecl($1);
+		$$ = NULL;
 	}
 	;
 
@@ -163,33 +164,55 @@ ellipsis_token:TCOMMA TELLIPSIS;
 function_definition
 	: declaration_specifier identifier TLPAREN function_arguments TRPAREN block
 	{
+		NFunctionDecl *func_decl = new NFunctionDecl(*$1, *$2, *$4, NULL, false);
+		SETLINE(func_decl);
+		main_parser->addDecl(func_decl);
+
 		$$ = new NFunctionDecl(*$1, *$2, *$4, $6, false);
 		SETLINE($$);
 	}
 	| declaration_specifier identifier TLPAREN function_arguments TRPAREN TSEMICOLON
 	{
-		$$ = new NFunctionDecl(*$1, *$2, *$4, NULL, false);
-		SETLINE($$);
+		NFunctionDecl *func_decl = new NFunctionDecl(*$1, *$2, *$4, NULL, false);
+		SETLINE(func_decl);
+		main_parser->addDecl(func_decl);
+
+		$$ = NULL;
 	}
 	| declaration_specifier identifier TLPAREN function_arguments ellipsis_token TRPAREN block
 	{
+		NFunctionDecl *func_decl = new NFunctionDecl(*$1, *$2, *$4, NULL, true);
+		SETLINE(func_decl);
+		main_parser->addDecl(func_decl);
+
 		$$ = new NFunctionDecl(*$1, *$2, *$4, $7, true);
 		SETLINE($$);
 	}
 	| declaration_specifier identifier TLPAREN function_arguments ellipsis_token TRPAREN TSEMICOLON
 	{
-		$$ = new NFunctionDecl(*$1, *$2, *$4, NULL, true);
-		SETLINE($$);
+		NFunctionDecl *func_decl = new NFunctionDecl(*$1, *$2, *$4, NULL, true);
+		SETLINE(func_decl);
+		main_parser->addDecl(func_decl);
+
+		$$ = NULL;
 	}
 	;
 
+identifier_opt
+	: /* Blank */
+	{
+		$$ = new NIdentifier(*new string(""));
+	}
+	| identifier
+	;
+
 param_declaration
-	: type_specifier identifier initializer_opt
+	: type_specifier identifier_opt initializer_opt
 	{
 		$$ = new NParamDecl(*$1, *$2, *new ArrayDim(), $3);
 		SETLINE($$);
 	}
-	| type_specifier identifier array_dim initializer_opt
+	| type_specifier identifier_opt array_dim initializer_opt
 	{
 		$$ = new NParamDecl(*$1, *$2, *$3, $4);
 		SETLINE($$);
@@ -338,7 +361,7 @@ struct_declaration
 	  fields_declaration
 	  TRBRACE
 	{
-		$$ = new NStructDecl(*new NIdentifier(*new std::string("anon")),
+		$$ = new NStructDecl(*new NIdentifier(*new std::string(".anon")),
 							 $3);
 		SETLINE($$);
 	}
@@ -361,7 +384,7 @@ union_declaration
 	  fields_declaration
 	  TRBRACE
 	{
-		$$ = new NUnionDecl(*new NIdentifier(*new std::string("anon")),
+		$$ = new NUnionDecl(*new NIdentifier(*new std::string(".anon")),
 							$3);
 		SETLINE($$);
 	}
@@ -474,9 +497,8 @@ statement_list
 	;
 
 statement
-	: variable_declaration TSEMICOLON
-	| function_definition
-	| ret_statement TSEMICOLON
+	: function_definition
+	| declarations TSEMICOLON
 	| jump_statement TSEMICOLON
 	| expression TSEMICOLON
 	{
@@ -519,6 +541,7 @@ jump_statement
 		$$ = new NGotoStatement($2->name);
 		delete $2;
 	}
+	| ret_statement
 	;
 
 block

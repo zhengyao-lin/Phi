@@ -19,8 +19,29 @@ struct incomp {
 	int i;
 };
 
+typedef struct occ { double ppp; } occt;
+
+int env2(int i)
+{
+	occt obj;
+	printf("%f\n", obj.ppp = 10);
+
+	return 0;
+}
+
+delegate int nnn(double ttt);
+
 int main()
 {
+	//typedef struct occ { int iii; } occt;
+	delegate int nnn(int ttt);
+
+	nnn i = env2;
+	i(10);
+
+	occt obj;
+	printf("%f\n", obj.ppp = 1000);
+
 	{
 		struct incomp ic;
 		int ppp = ic.i;
@@ -61,6 +82,17 @@ int main()
 
 		**(i+1) = 111;
 		printf("%d\n", i[1][0]);
+	}
+
+	{
+		int i[10];
+		printf("%d, %d\n", &i[0], i);
+	}
+
+
+	{
+		void* x = 0;
+		void* y = &*x;
 	}
 
 	//printf("%d\n", i);

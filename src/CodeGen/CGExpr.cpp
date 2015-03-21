@@ -239,6 +239,7 @@ Value *
 NPrefixExpr::codeGen(CodeGenContext& context)
 {
 	LoadInst *load_inst;
+	GetElementPtrInst *get_ptr_inst;
 	Value *val_tmp;
 	Type *val_type;
 	Type *type_expr_operand;
@@ -268,7 +269,14 @@ NPrefixExpr::codeGen(CodeGenContext& context)
 			if (load_inst = dyn_cast<LoadInst>(val_tmp)) {
 				load_inst->removeFromParent();
 				val_tmp = load_inst->getPointerOperand();
+
 				delete load_inst;
+				return val_tmp;
+			} else if (get_ptr_inst = dyn_cast<GetElementPtrInst>(val_tmp)) {
+				get_ptr_inst->removeFromParent();
+				val_tmp = get_ptr_inst->getPointerOperand();
+
+				delete get_ptr_inst;
 				return val_tmp;
 			} else {
 				CGERR_Get_Non_Resident_Value_Address(context);
@@ -573,9 +581,9 @@ NFieldExpr::codeGen(CodeGenContext& context)
 
 	if (!struct_type->getStructName().substr(0, strlen(UNION_PREFIX)).compare(UNION_PREFIX)) { // prefix is "union." ?
 		is_union_flag = true;
-		union_map = context.unions[struct_type->getStructName()];
+		union_map = *context.getUnion(struct_type->getStructName());
 	} else {
-		map = context.structs[struct_type->getStructName()];
+		map = *context.getStruct(struct_type->getStructName());
 	}
 
 	if (is_union_flag) {

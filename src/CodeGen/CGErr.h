@@ -181,6 +181,14 @@ CGERR_Suppose_To_Be_Struct_Type(CodeGenContext& context, const char *name)
 }
 
 inline void
+CGERR_Suppose_To_Be_Union_Type(CodeGenContext& context, const char *name)
+{
+	context.messages.newMessage(new ErrorInfo(ErrorInfo::Error, true, ErrorInfo::Exit1,
+											  "Type \"$(name)\" is suppose to be union type (add union keyword)", name));
+	return;
+}
+
+inline void
 CGERR_Initializer_Cannot_Be_In_Struct(CodeGenContext& context)
 {
 	context.messages.newMessage(new ErrorInfo(ErrorInfo::Warning, true, ErrorInfo::NoAct,
@@ -265,5 +273,40 @@ CGERR_Unassignable_LValue(CodeGenContext& context)
 {
 	context.messages.newMessage(new ErrorInfo(ErrorInfo::Error, true, ErrorInfo::Exit1,
 											  "Unassignable left value"));
+	return;
+}
+
+inline void
+CGERR_Useless_Param(CodeGenContext& context)
+{
+	context.messages.newMessage(new ErrorInfo(ErrorInfo::Warning, true, ErrorInfo::NoAct,
+											  "Useless parameter without a name"));
+	return;
+}
+
+inline void
+CGERR_Conflicting_Type(CodeGenContext& context, const char *name, int arg_no)
+{
+	char buffer[BUFFER_SIZE];
+	sprintf(buffer, "%d%s", arg_no, (arg_no % 10 == 1 ? "st" : (arg_no % 10 == 2 ? "nd" : (arg_no % 10 == 3 ? "rd" : "th"))));
+
+	context.messages.newMessage(new ErrorInfo(ErrorInfo::Error, true, ErrorInfo::Exit1,
+											  "Conflicting type for \"$(name)\" (the $(num) argument)", name, buffer));
+	return;
+}
+
+inline void
+CGERR_Void_Type_Param(CodeGenContext& context)
+{
+	context.messages.newMessage(new ErrorInfo(ErrorInfo::Error, true, ErrorInfo::Exit1,
+											  "Parameter with void type"));
+	return;
+}
+
+inline void
+CGERR_Void_Should_Be_The_Only_Param(CodeGenContext& context)
+{
+	context.messages.newMessage(new ErrorInfo(ErrorInfo::Error, true, ErrorInfo::Exit1,
+											  "void must be the first and only parameter if specified"));
 	return;
 }

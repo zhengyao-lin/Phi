@@ -35,15 +35,26 @@ TypeInfoTable initializeBasicType(CodeGenContext& context);
 Value *codeGenLoadValue(CodeGenContext& context, Value *V);
 uint64_t getConstantIntExprJIT(Constant *const_expr);
 
+typedef std::map<std::string, unsigned> FieldMap;
+typedef std::map<std::string, Type *> UnionFieldMap;
+
+typedef struct {
+	TypeInfoTable local_types;
+    std::map<std::string, Value*> locals;
+	std::map<std::string, FieldMap> structs;
+	std::map<std::string, UnionFieldMap> unions;
+} BlockLocalContext;
+
 class CodeGenBlock {
 public:
     BasicBlock *block;
     Value *returnValue;
-    std::map<std::string, Value*> locals;
-};
 
-typedef std::map<std::string, unsigned> FieldMap;
-typedef std::map<std::string, Type *> UnionFieldMap;
+	TypeInfoTable local_types;
+    std::map<std::string, Value*> locals;
+	std::map<std::string, FieldMap> structs;
+	std::map<std::string, UnionFieldMap> unions;
+};
 
 class CodeGenContext {
     std::stack<CodeGenBlock *> blocks;
@@ -103,6 +114,76 @@ public:
 		}
 		return labels[name];
 	}
+
+	FieldMap *getStruct(std::string name) {
+		if (currentBlock()
+			&& blocks.top()->structs.find(name) != blocks.top()->structs.end()) {
+			return &blocks.top()->structs[name];
+		}
+
+		if (structs.find(name) != structs.end()) {
+			return &structs[name];
+		}
+
+		return NULL;
+	}
+
+	void setStruct(std::string name, FieldMap map) {
+		if (currentBlock()) {
+			blocks.top()->structs[name] = map;
+		} else {
+			structs[name] = map;
+		}
+
+		return;
+	}
+
+	UnionFieldMap *getUnion(std::string name) {
+		if (currentBlock()
+			&& blocks.top()->unions.find(name) != blocks.top()->unions.end()) {
+			return &blocks.top()->unions[name];
+		}
+
+		if (unions.find(name) != unions.end()) {
+			return &unions[name];
+		}
+
+		return NULL;
+	}
+
+	void setUnion(std::string name, UnionFieldMap map) {
+		if (currentBlock()) {
+			blocks.top()->unions[name] = map;
+		} else {
+			unions[name] = map;
+		}
+
+		return;
+	}
+
+	Type *getType(std::string name) {
+		if (currentBlock()
+			&& blocks.top()->local_types.find(name) != blocks.top()->local_types.end()) {
+			return blocks.top()->local_types[name];
+		}
+
+		if (types.find(name) != types.end()) {
+			return types[name];
+		}
+
+		return NULL;
+	}
+
+	void setType(std::string name, Type *type) {
+		if (currentBlock()) {
+			blocks.top()->local_types[name] = type;
+		} else {
+			types[name] = type;
+		}
+
+		return;
+	}
+
 	void setLabel(std::string name, BasicBlock *block) {
 		labels[name] = block;
 		return;
@@ -113,6 +194,28 @@ public:
 		}
 		return NULL;
     }
+	BlockLocalContext backupLocalContext() {
+		BlockLocalContext ret;
+
+		if (currentBlock()) {
+			ret.local_types = blocks.top()->local_types;
+			ret.locals = blocks.top()->locals;
+			ret.structs = blocks.top()->structs;
+			ret.unions = blocks.top()->unions;
+		}
+
+		return ret;
+	}
+	void restoreLocalContext(BlockLocalContext context) {
+		if (currentBlock()) {
+			blocks.top()->local_types = context.local_types;
+			blocks.top()->locals = context.locals;
+			blocks.top()->structs = context.structs;
+			blocks.top()->unions = context.unions;
+		}
+
+		return;
+	}
     TerminatorInst *currentTerminator() {
 		if (blocks.size()) {
         	return blocks.top()->block->getTerminator();
@@ -136,10 +239,15 @@ public:
         newb->returnValue = NULL;
         newb->block = block;
 		if (currentBlock()) { // inherit locals
-			newb->locals = getTopLocals();
+			BlockLocalContext context = backupLocalContext();
+			blocks.push(newb);
+			restoreLocalContext(context);
+
+			return;
 		}
 
 		blocks.push(newb);
+		return;
     }
     void popBlock() {
         CodeGenBlock *top = blocks.top();

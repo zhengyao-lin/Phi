@@ -109,13 +109,13 @@ isIntegerPointer(Value *V)
 			&& V->getType()->getPointerElementType()->getTypeID() == Type::IntegerTyID);
 }
 inline bool
-isIntegerPointerTy(Type *T)
+isIntegerPointerType(Type *T)
 {
 	return (T->getTypeID() == Type::PointerTyID
 			&& T->getPointerElementType()->getTypeID() == Type::IntegerTyID);
 }
 inline bool
-isBooleanTy(Type *T)
+isBooleanType(Type *T)
 {
 	return (T->getTypeID() == Type::IntegerTyID
 			&& dyn_cast<IntegerType>(T)->getIntegerBitWidth() == 1);
@@ -125,6 +125,16 @@ isBoolean(Value *V)
 {
 	return (V->getType()->getTypeID() == Type::IntegerTyID
 			&& dyn_cast<IntegerType>(V->getType())->getIntegerBitWidth() == 1);
+}
+inline bool
+isVoid(Value *V)
+{
+	return V->getType()->getTypeID() == Type::VoidTyID;
+}
+inline bool
+isVoidType(Type *T)
+{
+	return T->getTypeID() == Type::VoidTyID;
 }
 inline unsigned
 getBitWidth(Type *T)

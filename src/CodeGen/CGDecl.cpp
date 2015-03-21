@@ -130,6 +130,37 @@ NVariableDecl::codeGen(CodeGenContext& context)
 	return NULL;
 }
 
+static bool
+checkParam(CodeGenContext& context, int lineno, vector<Type*>& arguments, ParamList& arg_nodes)
+{
+	vector<Type*>::const_iterator param_type_it;
+	ParamList::const_iterator param_it;
+
+	for (param_type_it = arguments.begin(), param_it = arg_nodes.begin();
+		 param_type_it != arguments.end();
+		 param_type_it++, param_it++) {
+		if (isVoidType(*param_type_it)) { // param has void type
+			if ((*param_it)->id.name != "") {
+				CGERR_Void_Type_Param(context);
+				CGERR_setLineNum(context, lineno);
+				CGERR_showAllMsg(context);
+				return false;
+			} else if (arguments.end() - arguments.begin() > 1) {
+				CGERR_Void_Should_Be_The_Only_Param(context);
+				CGERR_setLineNum(context, lineno);
+				CGERR_showAllMsg(context);
+				return false;
+			}
+			param_type_it = arguments.erase(param_type_it);
+			param_it = arg_nodes.erase(param_it);
+			param_type_it--;
+			param_it--;
+		}
+	}
+
+	return true;
+}
+
 Value*
 NDelegateDecl::codeGen(CodeGenContext& context)
 {
@@ -138,9 +169,10 @@ NDelegateDecl::codeGen(CodeGenContext& context)
 	Type *ret_type = type.getType(context);
 
 	arg_types = getArgTypeList(context, arguments);
+	checkParam(context, getLine(this), arg_types, arguments);
 
 	ftype = FunctionType::get(ret_type, makeArrayRef(arg_types), has_vargs);
-	context.types[id.name] = ftype->getPointerTo();
+	context.setType(id.name, ftype->getPointerTo());
 
 	return NULL;
 }
@@ -158,18 +190,18 @@ NStructDecl::codeGen(CodeGenContext& context)
 	DeclSpecifier::const_iterator decl_spec_it;
 	string real_name = STRUCT_PREFIX + id.name;
 
-	if (context.types.find(real_name) != context.types.end()) {
-		if (context.structs.find(real_name) != context.structs.end()
+	if (context.getType(real_name)) {
+		if (context.getStruct(real_name)
 			&& fields) { // redefinition
 			CGERR_Redefinition_Of_Struct(context, id.name.c_str());
 			CGERR_setLineNum(context, getLine(this));
 			CGERR_showAllMsg(context);
 			return NULL;
 		}
-		struct_type = dyn_cast<StructType>(context.types[real_name]);
+		struct_type = dyn_cast<StructType>(context.getType(real_name));
 	} else {
 		struct_type = StructType::create(getGlobalContext(), real_name);
-		context.types[real_name] = struct_type;
+		context.setType(real_name, struct_type);
 	}
 
 	if (fields) {
@@ -202,7 +234,7 @@ NStructDecl::codeGen(CodeGenContext& context)
 			}
 		}
 		struct_type->setBody(makeArrayRef(field_types), true);
-		context.structs[real_name] = field_map;
+		context.setStruct(struct_type->getStructName(), field_map);
 	}
 
 	return (Value *)struct_type;
@@ -222,18 +254,18 @@ NUnionDecl::codeGen(CodeGenContext& context)
 	DeclSpecifier::const_iterator decl_spec_it;
 	string real_name = UNION_PREFIX + id.name;
 
-	if (context.types.find(real_name) != context.types.end()) {
-		if (context.unions.find(real_name) != context.unions.end()
+	if (context.getType(real_name)) {
+		if (context.getUnion(real_name)
 			&& fields) { // redefinition
 			CGERR_Redefinition_Of_Union(context, id.name.c_str());
 			CGERR_setLineNum(context, getLine(this));
 			CGERR_showAllMsg(context);
 			return NULL;
 		}
-		union_type = dyn_cast<StructType>(context.types[real_name]);
+		union_type = dyn_cast<StructType>(context.getType(real_name));
 	} else {
 		union_type = StructType::create(getGlobalContext(), real_name);
-		context.types[real_name] = union_type;
+		context.setType(real_name, union_type);
 	}
 
 	if (fields) {
@@ -277,7 +309,7 @@ NUnionDecl::codeGen(CodeGenContext& context)
 		}
 		field_types.push_back(max_sized_type);
 		union_type->setBody(makeArrayRef(field_types), true);
-		context.unions[real_name] = field_map;
+		context.setUnion(union_type->getStructName(), field_map);
 	}
 
 	return (Value *)union_type;
@@ -290,7 +322,7 @@ NTypedefDecl::codeGen(CodeGenContext& context)
 
 	tmp_type = setArrayType(context, tmp_type, array_dim, getLine(this));
 
-	context.types[id.name] = tmp_type;
+	context.setType(id.name, tmp_type);
 
 	return NULL;
 }
@@ -298,13 +330,14 @@ NTypedefDecl::codeGen(CodeGenContext& context)
 Value*
 NFunctionDecl::codeGen(CodeGenContext& context)
 {
-	vector<Type*> argTypes;
+	vector<Type*> arg_types;
 	FunctionType *ftype;
 	Function *function;
 	BasicBlock *bblock;
 	Function::arg_iterator arg_it;
 	ParamList::const_iterator param_it;
 	DeclSpecifier::const_iterator decl_spec_it;
+	vector<Type*>::const_iterator param_type_it;
 	Type *ret_type;
 
 	for (decl_spec_it = func_specifier.begin();
@@ -314,17 +347,34 @@ NFunctionDecl::codeGen(CodeGenContext& context)
 	}
 
 	ret_type = specifiers->type->getType(context);
-	argTypes = getArgTypeList(context, arguments);
+	arg_types = getArgTypeList(context, arguments);
+	checkParam(context, getLine(this), arg_types, arguments);
 
-	ftype = FunctionType::get(ret_type, makeArrayRef(argTypes), has_vargs);
+	ftype = FunctionType::get(ret_type, makeArrayRef(arg_types), has_vargs);
 
 	if (!(function = context.module->getFunction(id.name))) {
 		function = Function::Create(ftype,
 									(specifiers->is_static ? GlobalValue::InternalLinkage
 														   : GlobalValue::ExternalLinkage),
 									id.name.c_str(), context.module);
-	}
+	} else {
+		for (param_type_it = arg_types.begin(), arg_it = function->arg_begin();
+			 param_type_it != arg_types.end() && arg_it != function->arg_end();
+			 param_type_it++, arg_it++) {
+			if (isSameType(*param_type_it, arg_it->getType())) {
+				continue;
+			}
+			break;
+		}
 
+		if (param_type_it != arg_types.end()
+			|| arg_it != function->arg_end()) {
+			CGERR_Conflicting_Type(context, id.name.c_str(), param_type_it - arg_types.begin() + 1);
+			CGERR_setLineNum(context, getLine(this));
+			CGERR_showAllMsg(context);
+			return NULL;
+		}
+	}
 
 	if (block) {
 		if (context.currentBlock()) {
@@ -340,10 +390,19 @@ NFunctionDecl::codeGen(CodeGenContext& context)
 
 		for (param_it = arguments.begin(), arg_it = function->arg_begin();
 			 param_it != arguments.end(); param_it++, arg_it++) {
-			arg_it->setName((*param_it)->id.name.c_str());
-			AllocaInst *alloc_inst = context.builder->CreateAlloca(arg_it->getType(), nullptr, "");
-			context.builder->CreateStore(arg_it, alloc_inst);
-			context.getTopLocals()[(*param_it)->id.name] = alloc_inst;
+			if ((*param_it)->id.name != "") {
+				arg_it->setName((*param_it)->id.name.c_str());
+				AllocaInst *alloc_inst = context.builder->CreateAlloca(arg_it->getType(), nullptr, "");
+				context.builder->CreateStore(arg_it, alloc_inst);
+				context.getTopLocals()[(*param_it)->id.name] = alloc_inst;
+			} else {
+				CGERR_Useless_Param(context);
+				CGERR_setLineNum(context, getLine(this));
+				CGERR_showAllMsg(context);
+				AllocaInst *alloc_inst = context.builder->CreateAlloca(arg_it->getType(),
+																	   nullptr, "");
+				context.builder->CreateStore(arg_it, alloc_inst);
+			}
 		}
 
 		block->codeGen(context);

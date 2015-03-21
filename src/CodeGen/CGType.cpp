@@ -6,12 +6,20 @@
 
 static Type *typeOf(CodeGenContext &context, const NIdentifier& type)
 {
-	if (context.types.find(type.name) != context.types.end()) {
-		return context.types[type.name];
+	Type *ret;
+	if (ret = context.getType(type.name)) {
+		return ret;
 	}
 
-	if (context.types.find(STRUCT_PREFIX + type.name) != context.types.end()) {
+	if (context.getType(STRUCT_PREFIX + type.name)) {
 		CGERR_Suppose_To_Be_Struct_Type(context, type.name.c_str());
+		CGERR_setLineNum(context, type.lineno);
+		CGERR_showAllMsg(context);
+		return NULL;
+	}
+
+	if (context.getType(UNION_PREFIX + type.name)) {
+		CGERR_Suppose_To_Be_Union_Type(context, type.name.c_str());
 		CGERR_setLineNum(context, type.lineno);
 		CGERR_showAllMsg(context);
 		return NULL;

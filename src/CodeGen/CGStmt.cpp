@@ -10,15 +10,16 @@
 Value *
 NBlock::codeGen(CodeGenContext& context)
 {
-	std::map<std::string, Value*> local_backup;
+	BlockLocalContext local_context = context.backupLocalContext();
 	StatementList::const_iterator it;
 	Value *last = NULL;
 
-	local_backup = context.copyTopLocals();
 	for (it = statements.begin(); it != statements.end(); it++) {
-		last = (**it).codeGen(context);
+		if (*it) {
+			last = (**it).codeGen(context);
+		}
 	}
-	context.setTopLocals(local_backup);
+	context.restoreLocalContext(local_context);
 
 	return last;
 }

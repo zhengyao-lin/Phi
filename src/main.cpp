@@ -4,6 +4,7 @@
 #include <string.h>
 #include "CodeGen/CGAST.h"
 #include "AST/Node.h"
+#include "AST/Parser.h"
 #include "ErrorMsg/EMCore.h"
 #include "llvm/Support/ManagedStatic.h"
 #include "llvm/Support/FileSystem.h"
@@ -11,12 +12,8 @@
 
 using namespace std;
 
-static FILE *fp;
 extern FILE *yyin;
-extern int yyparse();
-extern int yylex_destroy();
-extern NBlock* AST;
-void createCoreFunctions(CodeGenContext& context);
+Parser *main_parser = NULL;
 
 class IOSetting
 {
@@ -123,16 +120,19 @@ int llc_main(int argc, char **argv);
 int main(int argc, char **argv)
 {
 	PassManager pm;
+	CodeGenContext context;
+
+	main_parser = new Parser();
 	IOSetting *settings = new IOSetting(argc, argv);
 	settings->applySetting();
 
-	yyparse();
-	yylex_destroy();
+	main_parser->startParse(yyin);
 
 	InitializeNativeTarget();
-	CodeGenContext context;
-	context.generateCode(*AST);
-	delete AST;
+
+	main_parser->generateAllDecl(context);
+	context.generateCode(*main_parser->getAST());
+	delete main_parser;
 
 	if (settings->hasObject()) {
 		raw_fd_ostream rfo(settings->getObject().c_str(),
