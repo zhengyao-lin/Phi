@@ -59,7 +59,7 @@
 %token <token> TRETURN TEXTERN TDELEGATE TSTRUCT TSTATIC
 				TTYPEDEF TUNION TGOTO
 
-%type <identifier> identifier identifier_opt
+%type <identifier> identifier
 %type <expression> numeric string_literal expression
 					assignment_expression unary_expression primary_expression
 					postfix_expression conditional_expression additive_expression
@@ -74,9 +74,9 @@
 %type <param_list> function_arguments
 %type <expression_list> expression_list call_arguments
 %type <array_dim> array_dim
-%type <specifier> storage_specifier class_specifier
+%type <specifier> storage_specifier class_specifier prefix_specifier
 %type <declaration_specifier> declaration_specifier
-%type <declarator> init_declarator
+%type <declarator> init_declarator declarator direct_declarator
 %type <declarator_list> declarator_list
 %type <param_declaration> param_declaration
 %type <block> statement_list block in_namespace_declaration_list
@@ -185,23 +185,18 @@ class_specifier
 	}
 	;
 
-declaration_specifier
+prefix_specifier
 	: storage_specifier
-	{
-		$$ = new DeclSpecifier();
-		$$->push_back($1);
-	}
 	| class_specifier
+	;
+
+declaration_specifier
+	: prefix_specifier
 	{
 		$$ = new DeclSpecifier();
 		$$->push_back($1);
 	}
-	| declaration_specifier storage_specifier
-	{
-		$1->push_back($2);
-		$$ = $1;
-	}
-	| declaration_specifier class_specifier
+	| declaration_specifier prefix_specifier
 	{
 		$1->push_back($2);
 		$$ = $1;
@@ -210,45 +205,37 @@ declaration_specifier
 
 ellipsis_token:TCOMMA TELLIPSIS;
 function_definition
-	: declaration_specifier identifier TLPAREN function_arguments TRPAREN block
+	: declaration_specifier init_declarator TLPAREN function_arguments TRPAREN block
 	{
 		$$ = new NFunctionDecl(*$1, *$2, *$4, $6, false);
 		SETLINE($$);
 	}
-	| declaration_specifier identifier TLPAREN function_arguments TRPAREN TSEMICOLON
+	| declaration_specifier init_declarator TLPAREN function_arguments TRPAREN TSEMICOLON
 	{
 		$$ = new NFunctionDecl(*$1, *$2, *$4, NULL, false);
 		SETLINE($$);
 	}
-	| declaration_specifier identifier TLPAREN function_arguments ellipsis_token TRPAREN block
+	| declaration_specifier init_declarator TLPAREN function_arguments ellipsis_token TRPAREN block
 	{
 		$$ = new NFunctionDecl(*$1, *$2, *$4, $7, true);
 		SETLINE($$);
 	}
-	| declaration_specifier identifier TLPAREN function_arguments ellipsis_token TRPAREN TSEMICOLON
+	| declaration_specifier init_declarator TLPAREN function_arguments ellipsis_token TRPAREN TSEMICOLON
 	{
 		$$ = new NFunctionDecl(*$1, *$2, *$4, NULL, true);
 		SETLINE($$);
 	}
 	;
 
-identifier_opt
-	: /* Blank */
-	{
-		$$ = new NIdentifier(*new string(""));
-	}
-	| identifier
-	;
-
 param_declaration
-	: type_specifier identifier_opt initializer_opt
+	: type_specifier declarator
 	{
-		$$ = new NParamDecl(*$1, *$2, *new ArrayDim(), $3);
+		$$ = new NParamDecl(*$1, *$2);
 		SETLINE($$);
 	}
-	| type_specifier identifier_opt array_dim initializer_opt
+	| type_specifier
 	{
-		$$ = new NParamDecl(*$1, *$2, *$3, $4);
+		$$ = new NParamDecl(*$1, *new Declarator());
 		SETLINE($$);
 	}
 	;
@@ -274,14 +261,9 @@ type_specifier
 	| struct_type
 	| union_type
 	| bitfield_type
-	| TTYPEOF TLPAREN unary_expression TRPAREN
+	| TTYPEOF unary_expression
 	{
-		$$ = new NTypeof(*$3);
-		SETLINE($$);
-	}
-	| type_specifier ptr_dim
-	{
-		$$ = new NDerivedType(*$1, $2);
+		$$ = new NTypeof(*$2);
 		SETLINE($$);
 	}
 	;
@@ -297,16 +279,33 @@ initializer_opt
 	}
 	;
 
-init_declarator
-	: identifier initializer_opt
+direct_declarator
+	: identifier
 	{
-		$$ = new Declarator(*$1, NULL, $2);
-		//delete $1;
+		$$ = new IdentifierDeclarator(*$1);
 	}
-	| identifier array_dim initializer_opt
+	/*| TLPAREN declarator TRPAREN
 	{
-		$$ = new Declarator(*$1, $2, $3);
-		//delete $1;
+		$$ = $2;
+	}*/
+	| direct_declarator array_dim
+	{
+		$$ = new ArrayDeclarator(*$1, *$2);
+	}
+	;
+
+declarator
+	: direct_declarator
+	| ptr_dim direct_declarator
+	{
+		$$ = new PointerDeclarator($1, *$2);
+	}
+	;
+
+init_declarator
+	: declarator initializer_opt
+	{
+		$$ = new InitDeclarator(*$1, $2);
 	}
 	;
 
@@ -332,12 +331,12 @@ variable_declaration
 	;
 
 delegate_declaration
-	: TDELEGATE type_specifier identifier TLPAREN function_arguments TRPAREN
+	: TDELEGATE type_specifier declarator TLPAREN function_arguments TRPAREN
 	{
 		$$ = new NDelegateDecl(*$2, *$3, *$5, false);
 		SETLINE($$);
 	}
-	| TDELEGATE TSTATIC type_specifier identifier TLPAREN function_arguments TRPAREN
+	| TDELEGATE TSTATIC type_specifier declarator TLPAREN function_arguments TRPAREN
 	{
 		ASTERR_Static_Specifier_In_Delegate();
 		ASTERR_setLineNumber();
@@ -346,12 +345,12 @@ delegate_declaration
 		$$ = new NDelegateDecl(*$3, *$4, *$6, false);
 		SETLINE($$);
 	}
-	| TDELEGATE type_specifier identifier TLPAREN function_arguments ellipsis_token TRPAREN
+	| TDELEGATE type_specifier declarator TLPAREN function_arguments ellipsis_token TRPAREN
 	{
 		$$ = new NDelegateDecl(*$2, *$3, *$5, true);
 		SETLINE($$);
 	}
-	| TDELEGATE TSTATIC type_specifier identifier TLPAREN function_arguments ellipsis_token TRPAREN
+	| TDELEGATE TSTATIC type_specifier declarator TLPAREN function_arguments ellipsis_token TRPAREN
 	{
 		ASTERR_Static_Specifier_In_Delegate();
 		ASTERR_setLineNumber();
@@ -425,14 +424,9 @@ union_declaration
 	;
 
 typedef_declaration
-	: TTYPEDEF type_specifier identifier
+	: TTYPEDEF type_specifier declarator
 	{
-		$$ = new NTypedefDecl(*$2, *$3, *new ArrayDim());
-		SETLINE($$);
-	}
-	| TTYPEDEF type_specifier identifier array_dim
-	{
-		$$ = new NTypedefDecl(*$2, *$3, *$4);
+		$$ = new NTypedefDecl(*$2, *$3);
 		SETLINE($$);
 	}
 	;
@@ -442,9 +436,9 @@ ptr_dim
 	{
 		$$ = 1;
 	}
-	| ptr_dim TMUL
+	| TMUL ptr_dim
 	{
-		$$ = $1 + 1;
+		$$ = $2 + 1;
 	}
 	;
 
