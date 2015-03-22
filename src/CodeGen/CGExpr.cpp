@@ -240,12 +240,43 @@ NBinaryExpr::codeGen(CodeGenContext& context)
 	return NULL;
 }
 
+inline Value *
+getLoadOperand(CodeGenContext& context, Value *val, bool if_delete)
+{
+	LoadInst *load_inst;
+	GetElementPtrInst *get_ptr_inst;
+
+	if (load_inst = dyn_cast<LoadInst>(val)) {
+		val = load_inst->getPointerOperand();
+
+		if (if_delete) {
+			load_inst->removeFromParent();
+			delete load_inst;
+		}
+
+		return val;
+	} else if (get_ptr_inst = dyn_cast<GetElementPtrInst>(val)) {
+		val = get_ptr_inst->getPointerOperand();
+
+		if (if_delete) {
+			get_ptr_inst->removeFromParent();
+			delete get_ptr_inst;
+		}
+
+		return val;
+	}
+
+	return NULL;
+}
+
 Value *
 NPrefixExpr::codeGen(CodeGenContext& context)
 {
 	LoadInst *load_inst;
 	GetElementPtrInst *get_ptr_inst;
 	Value *val_tmp;
+	Value *val_ptr;
+	Value *rhs;
 	Type *val_type;
 	Type *type_expr_operand;
 
@@ -262,7 +293,9 @@ NPrefixExpr::codeGen(CodeGenContext& context)
 													   makeArrayRef(idxs), "");
 		}
 		if (context.isLValue()
-			&& typeid(operand) == typeid(NBinaryExpr)) { // *( expr [+-] expr ) = ?
+			&& (typeid(operand) == typeid(NBinaryExpr) // *( expr [+-] expr ) = ?
+			|| typeid(operand) == typeid(NPrefixExpr) // *( ++expr) = ?
+			|| typeid(operand) == typeid(NIncDecExpr))) {
 			return val_tmp;
 		}
 
@@ -271,17 +304,7 @@ NPrefixExpr::codeGen(CodeGenContext& context)
 		if (context.isLValue()) {
 			return val_tmp;
 		} else {
-			if (load_inst = dyn_cast<LoadInst>(val_tmp)) {
-				load_inst->removeFromParent();
-				val_tmp = load_inst->getPointerOperand();
-
-				delete load_inst;
-				return val_tmp;
-			} else if (get_ptr_inst = dyn_cast<GetElementPtrInst>(val_tmp)) {
-				get_ptr_inst->removeFromParent();
-				val_tmp = get_ptr_inst->getPointerOperand();
-
-				delete get_ptr_inst;
+			if (val_tmp = getLoadOperand(context, val_tmp, true)) {
 				return val_tmp;
 			} else {
 				CGERR_Get_Non_Resident_Value_Address(context);
@@ -318,6 +341,35 @@ NPrefixExpr::codeGen(CodeGenContext& context)
 
 	val_type = val_tmp->getType();
 
+	if (op == TINC || op == TDEC) {
+		if (val_type->isPointerTy()
+			&& !isArrayPointer(val_tmp)) {
+			Value *ret_tmp;
+			rhs = ConstantInt::get(Type::getInt64Ty(getGlobalContext()), 1);
+
+			if (op == TDEC) {
+				rhs = context.builder->CreateSub(ConstantInt::get(rhs->getType(), 0),
+												 rhs, "");
+			}
+
+			if (context.isLValue()) {
+				val_tmp = context.builder->CreateLoad(val_tmp);
+			}
+
+			ret_tmp = context.builder->CreateInBoundsGEP(val_tmp, rhs, "");
+			context.builder->CreateStore(ret_tmp,
+										 getLoadOperand(context, val_tmp, false));
+
+			return ret_tmp;
+		}
+		if (!(val_ptr = getLoadOperand(context, val_tmp, false))) {
+			CGERR_Inc_Dec_Unassignable_Value(context);
+			CGERR_setLineNum(context, dyn_cast<NExpression>(this)->lineno);
+			CGERR_showAllMsg(context);
+			return NULL;
+		}
+	}
+
 	switch (op) {
 		case TLNOT:
 			return context.builder->CreateNot(val_tmp, "");
@@ -326,6 +378,24 @@ NPrefixExpr::codeGen(CodeGenContext& context)
 
 	if (val_type->isFloatingPointTy()) {
 		switch (op) {
+			case TINC: {
+				Value *add_inst;
+				add_inst = context.builder->CreateFAdd(val_tmp,
+													   ConstantFP::get(val_type, 1.0));
+				context.builder->CreateStore(add_inst,
+											 val_ptr);
+				return add_inst;
+				break;
+			}
+			case TDEC: {
+				Value *sub_inst;
+				sub_inst = context.builder->CreateFSub(val_tmp,
+													   ConstantFP::get(val_type, 1.0));
+				context.builder->CreateStore(sub_inst,
+											 val_ptr);
+				return sub_inst;
+				break;
+			}
 			case TADD:
 				return val_tmp;
 				break;
@@ -336,6 +406,24 @@ NPrefixExpr::codeGen(CodeGenContext& context)
 		}
 	} else if (val_type->isIntegerTy()) {
 		switch (op) {
+			case TINC: {
+				Value *add_inst;
+				add_inst = context.builder->CreateAdd(val_tmp,
+													  ConstantInt::get(val_type, 1));
+				context.builder->CreateStore(add_inst,
+											 val_ptr);
+				return add_inst;
+				break;
+			}
+			case TDEC: {
+				Value *sub_inst;
+				sub_inst = context.builder->CreateSub(val_tmp,
+													  ConstantInt::get(val_type, 1));
+				context.builder->CreateStore(sub_inst,
+											 val_ptr);
+				return sub_inst;
+				break;
+			}
 			case TADD:
 				return val_tmp;
 				break;
@@ -669,4 +757,86 @@ NArrayExpr::codeGen(CodeGenContext& context)
 	}
 
 	return codeGenLoadValue(context, ret);
+}
+
+Value *
+NIncDecExpr::codeGen(CodeGenContext& context)
+{
+	Type *val_type;
+	Value *val_tmp;
+	Value *val_ptr;
+	Value *rhs;
+
+	val_tmp = operand.codeGen(context);
+	val_type = val_tmp->getType();
+
+	if (val_type->isPointerTy()
+		&& !isArrayPointer(val_tmp)) {
+		rhs = ConstantInt::get(Type::getInt64Ty(getGlobalContext()), 1);
+
+		if (op == TDEC) {
+			rhs = context.builder->CreateSub(ConstantInt::get(rhs->getType(), 0),
+											 rhs, "");
+		}
+
+		if (context.isLValue()) {
+			val_tmp = context.builder->CreateLoad(val_tmp);
+			context.builder->CreateStore(context.builder->CreateInBoundsGEP(val_tmp, rhs, ""),
+										 getLoadOperand(context, val_tmp, false));
+		} else {
+			context.builder->CreateStore(context.builder->CreateInBoundsGEP(val_tmp, rhs, ""),
+										 getLoadOperand(context, val_tmp, false));
+		}
+
+		return val_tmp;
+	}
+
+	if (!(val_ptr = getLoadOperand(context, val_tmp, false))) {
+		CGERR_Inc_Dec_Unassignable_Value(context);
+		CGERR_setLineNum(context, dyn_cast<NExpression>(this)->lineno);
+		CGERR_showAllMsg(context);
+		return NULL;
+	}
+
+	if (val_type->isFloatingPointTy()) {
+		switch (op) {
+			case TINC: {
+				Value *add_inst;
+				add_inst = context.builder->CreateFAdd(val_tmp,
+													   ConstantFP::get(val_type, 1.0));
+				context.builder->CreateStore(add_inst,
+											 val_ptr);
+				break;
+			}
+			case TDEC: {
+				Value *sub_inst;
+				sub_inst = context.builder->CreateFSub(val_tmp,
+													   ConstantFP::get(val_type, 1.0));
+				context.builder->CreateStore(sub_inst,
+											 val_ptr);
+				break;
+			}
+		}
+	} else if (val_type->isIntegerTy()) {
+		switch (op) {
+			case TINC: {
+				Value *add_inst;
+				add_inst = context.builder->CreateAdd(val_tmp,
+													  ConstantInt::get(val_type, 1));
+				context.builder->CreateStore(add_inst,
+											 val_ptr);
+				break;
+			}
+			case TDEC: {
+				Value *sub_inst;
+				sub_inst = context.builder->CreateSub(val_tmp,
+													  ConstantInt::get(val_type, 1));
+				context.builder->CreateStore(sub_inst,
+											 val_ptr);
+				break;
+			}
+		}
+	}
+
+	return val_tmp;
 }

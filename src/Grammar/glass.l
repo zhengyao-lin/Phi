@@ -83,6 +83,8 @@ bool is_string = false;
 <INITIAL>"&"								return TOKEN(TAND);
 <INITIAL>"~"								return TOKEN(TNOT);
 <INITIAL>"!"								return TOKEN(TLNOT);
+<INITIAL>"++"								return TOKEN(TINC);
+<INITIAL>"--"								return TOKEN(TDEC);
 
  /* Binary */
 <INITIAL>"+"								return TOKEN(TADD);

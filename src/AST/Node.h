@@ -358,6 +358,23 @@ public:
 	virtual llvm::Value* codeGen(CodeGenContext& context);
 };
 
+class NIncDecExpr : public NExpression {
+public:
+	int lineno = -1;
+	int op;
+	NExpression& operand;
+
+	NIncDecExpr(NExpression& operand, int op) :
+	operand(operand), op(op) { }
+
+	virtual ~NIncDecExpr()
+	{
+		delete &operand;
+	}
+
+	virtual llvm::Value* codeGen(CodeGenContext& context);
+};
+
 class NAssignmentExpr : public NExpression {
 public:
 	int lineno = -1;
@@ -730,6 +747,7 @@ public:
 
 class NNameSpace : public NStatement {
 public:
+	int lineno = -1;
 	std::string& name;
 	NBlock *block;
 

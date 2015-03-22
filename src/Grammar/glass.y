@@ -54,7 +54,7 @@
 				TAND TNOT TSIZEOF TALIGNOF TTYPEOF TARROW
 			    TELLIPSIS TCOLON TSEMICOLON TCOMMA TDOT
 				TLBRAKT TRBRAKT TLAND TLOR TOR TXOR TIF TELSE
-				TLNOT TNAMESPACE TDCOLON
+				TLNOT TNAMESPACE TDCOLON TINC TDEC
 %token <token> TADD TSUB TMUL TDIV TMOD TSHR TSHL
 %token <token> TRETURN TEXTERN TDELEGATE TSTRUCT TSTATIC
 				TTYPEDEF TUNION TGOTO
@@ -678,6 +678,16 @@ postfix_expression
 		$$ = new NMethodCall(*$1, *$3);
 		SETLINE($$);
 	}
+	| postfix_expression TINC
+	{
+		$$ = new NIncDecExpr(*$1, $2);
+		SETLINE($$);
+	}
+	| postfix_expression TDEC
+	{
+		$$ = new NIncDecExpr(*$1, $2);
+		SETLINE($$);
+	}
 	| postfix_expression TLBRAKT expression TRBRAKT
 	{
 		$$ = new NArrayExpr(*$1, *$3);
@@ -703,6 +713,8 @@ unary_op
 	| TAND
 	| TNOT
 	| TLNOT
+	| TINC
+	| TDEC
 	;
 unary_expression
 	: postfix_expression

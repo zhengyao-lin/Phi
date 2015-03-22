@@ -318,3 +318,19 @@ CGERR_Redefinition_Of_Function(CodeGenContext& context, const char *name)
 											  "Redefinition of function \"$(name)\"", name));
 	return;
 }
+
+inline void
+CGERR_Inc_Dec_Unassignable_Value(CodeGenContext& context)
+{
+	context.messages.newMessage(new ErrorInfo(ErrorInfo::Error, true, ErrorInfo::Exit1,
+											  "Use inc/dec operator on unassignable value"));
+	return;
+}
+
+inline void
+CGERR_Invalid_Main_Function_Return_Type(CodeGenContext& context)
+{
+	context.messages.newMessage(new ErrorInfo(ErrorInfo::Note, true, ErrorInfo::NoAct,
+											  "main function return type is supposed to be int"));
+	return;
+}

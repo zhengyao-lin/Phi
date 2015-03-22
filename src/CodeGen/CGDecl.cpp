@@ -395,6 +395,20 @@ NFunctionDecl::codeGen(CodeGenContext& context)
 		context.pushBlock(bblock);
 		context.builder->SetInsertPoint(context.currentBlock());
 
+		if (!context.formatName(id.name).compare("main")) { // name is "main"
+			if (isInt32Type(function->getReturnType())) {
+				context.builder->CreateAlloca(function->getReturnType(), nullptr, "");
+			} else {
+				CGERR_Invalid_Main_Function_Return_Type(context);
+				CGERR_setLineNum(context, getLine(this));
+				CGERR_showAllMsg(context);
+			}
+
+			//function->setDoesNotThrow();
+			//function->setHasUWTable();
+			//function->addFnAttr("no-frame-pointer-elim-non-leaf");
+		}
+
 		for (param_it = arguments.begin(), arg_it = function->arg_begin();
 			 param_it != arguments.end(); param_it++, arg_it++) {
 			if ((*param_it)->id.name != "") {

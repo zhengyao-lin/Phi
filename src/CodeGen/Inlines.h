@@ -127,6 +127,12 @@ isBoolean(Value *V)
 			&& dyn_cast<IntegerType>(V->getType())->getIntegerBitWidth() == 1);
 }
 inline bool
+isInt32Type(Type *T)
+{
+	return (T->getTypeID() == Type::IntegerTyID
+			&& dyn_cast<IntegerType>(T)->getIntegerBitWidth() == 32);
+}
+inline bool
 isVoid(Value *V)
 {
 	return V->getType()->getTypeID() == Type::VoidTyID;
