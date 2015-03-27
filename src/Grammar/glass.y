@@ -5,9 +5,12 @@
     #include <cstdio>
     #include <cstdlib>
 	#include <cstring>
+	#include <map>
 	#define SETLINE(p) ((p)->lineno = current_line_number)
 
 	extern Parser *main_parser;
+	extern CodeGenContext *global_context;
+	std::map<std::string, int> type_def;
 
 	void
 	ASTERR_Undefined_Syntax_Error(const char *token) {
@@ -47,7 +50,7 @@
 	int dim;
 }
 
-%token <string> TIDENTIFIER TINTEGER TDOUBLE TSTRING TTRUE TFALSE
+%token <string> TIDENTIFIER TTYPE_NAME TINTEGER TDOUBLE TSTRING TTRUE TFALSE
 %token <character> TCHAR
 %token <token> TCEQ TCNE TCLT TCLE TCGT TCGE TASSIGN
 %token <token> TLPAREN TRPAREN TLBRACE TRBRACE
@@ -59,7 +62,7 @@
 %token <token> TRETURN TEXTERN TDELEGATE TSTRUCT TSTATIC
 				TTYPEDEF TUNION TGOTO
 
-%type <identifier> identifier
+%type <identifier> identifier type_name namespace_header
 %type <expression> numeric string_literal expression
 					assignment_expression unary_expression primary_expression
 					postfix_expression conditional_expression additive_expression
@@ -72,7 +75,7 @@
 %type <type> type_specifier identifier_type bitfield_type struct_type union_type
 %type <variable_list> fields_declaration
 %type <param_list> function_arguments
-%type <expression_list> expression_list call_arguments
+%type <expression_list> expression_list
 %type <array_dim> array_dim
 %type <specifier> storage_specifier class_specifier prefix_specifier
 %type <declaration_specifier> declaration_specifier
@@ -85,6 +88,7 @@
 				   struct_declaration union_declaration typedef_declaration
 				   selection_statement labeled_statement jump_statement
 				   namespace_declaration in_namespace_declaration
+				   expression_statement
 %type <token> assign_op unary_op
 %type <dim>	ptr_dim
 
@@ -103,16 +107,24 @@ compile_unit
 	}
 	;
 
-namespace_declaration
-	: TNAMESPACE identifier TLBRACE in_namespace_declaration_list TRBRACE
+namespace_header
+	: TNAMESPACE identifier TLBRACE
 	{
-		$$ = new NNameSpace(*new std::string($2->name), $4);
-		delete $2;
+		$$ = $2;
+		SETLINE($$);
 	}
-	| TNAMESPACE identifier TLBRACE /* Blank */ TRBRACE
+	;
+
+namespace_declaration
+	: namespace_header in_namespace_declaration_list TRBRACE
 	{
-		$$ = new NNameSpace(*new std::string($2->name), NULL);
-		delete $2;
+		$$ = new NNameSpace(*new std::string($1->name), $2);
+		delete $1;
+	}
+	| namespace_header TRBRACE
+	{
+		$$ = new NNameSpace(*new std::string($1->name), NULL);
+		delete $1;
 	}
 	;
 
@@ -205,24 +217,9 @@ declaration_specifier
 
 ellipsis_token:TCOMMA TELLIPSIS;
 function_definition
-	: declaration_specifier init_declarator TLPAREN function_arguments TRPAREN block
+	: declaration_specifier declarator block
 	{
-		$$ = new NFunctionDecl(*$1, *$2, *$4, $6, false);
-		SETLINE($$);
-	}
-	| declaration_specifier init_declarator TLPAREN function_arguments TRPAREN TSEMICOLON
-	{
-		$$ = new NFunctionDecl(*$1, *$2, *$4, NULL, false);
-		SETLINE($$);
-	}
-	| declaration_specifier init_declarator TLPAREN function_arguments ellipsis_token TRPAREN block
-	{
-		$$ = new NFunctionDecl(*$1, *$2, *$4, $7, true);
-		SETLINE($$);
-	}
-	| declaration_specifier init_declarator TLPAREN function_arguments ellipsis_token TRPAREN TSEMICOLON
-	{
-		$$ = new NFunctionDecl(*$1, *$2, *$4, NULL, true);
+		$$ = new NFunctionDecl(*$1, *$2, $3);
 		SETLINE($$);
 	}
 	;
@@ -241,11 +238,7 @@ param_declaration
 	;
 
 function_arguments
-	: /* Blank */
-	{
-		$$ = new ParamList();
-	}
-	| param_declaration
+	: param_declaration
 	{
 		$$ = new ParamList();
 		$$->push_back($<param_declaration>1);
@@ -284,13 +277,25 @@ direct_declarator
 	{
 		$$ = new IdentifierDeclarator(*$1);
 	}
-	/*| TLPAREN declarator TRPAREN
+	| TLPAREN declarator TRPAREN
 	{
 		$$ = $2;
-	}*/
+	}
 	| direct_declarator array_dim
 	{
 		$$ = new ArrayDeclarator(*$1, *$2);
+	}
+	| direct_declarator TLPAREN function_arguments TRPAREN
+	{
+		$$ = new ParamDeclarator(*$1, *$3, false);
+	}
+	| direct_declarator TLPAREN TRPAREN
+	{
+		$$ = new ParamDeclarator(*$1, *new ParamList(), false);
+	}
+	| direct_declarator TLPAREN function_arguments ellipsis_token TRPAREN
+	{
+		$$ = new ParamDeclarator(*$1, *$3, true);
 	}
 	;
 
@@ -331,32 +336,20 @@ variable_declaration
 	;
 
 delegate_declaration
-	: TDELEGATE type_specifier declarator TLPAREN function_arguments TRPAREN
+	: TDELEGATE type_specifier declarator
 	{
-		$$ = new NDelegateDecl(*$2, *$3, *$5, false);
+		type_def[$3->getDeclInfo(*global_context, NULL)->id.name] = 0;
+		$$ = new NDelegateDecl(*$2, *$3);
 		SETLINE($$);
 	}
-	| TDELEGATE TSTATIC type_specifier declarator TLPAREN function_arguments TRPAREN
+	| TDELEGATE TSTATIC type_specifier declarator
 	{
 		ASTERR_Static_Specifier_In_Delegate();
 		ASTERR_setLineNumber();
 		ASTERR_showAllMsg();
 
-		$$ = new NDelegateDecl(*$3, *$4, *$6, false);
-		SETLINE($$);
-	}
-	| TDELEGATE type_specifier declarator TLPAREN function_arguments ellipsis_token TRPAREN
-	{
-		$$ = new NDelegateDecl(*$2, *$3, *$5, true);
-		SETLINE($$);
-	}
-	| TDELEGATE TSTATIC type_specifier declarator TLPAREN function_arguments ellipsis_token TRPAREN
-	{
-		ASTERR_Static_Specifier_In_Delegate();
-		ASTERR_setLineNumber();
-		ASTERR_showAllMsg();
-
-		$$ = new NDelegateDecl(*$3, *$4, *$6, true);
+		type_def[$4->getDeclInfo(*global_context, NULL)->id.name] = 0;
+		$$ = new NDelegateDecl(*$3, *$4);
 		SETLINE($$);
 	}
 	;
@@ -426,6 +419,7 @@ union_declaration
 typedef_declaration
 	: TTYPEDEF type_specifier declarator
 	{
+		type_def[$3->getDeclInfo(*global_context, NULL)->id.name] = 0;
 		$$ = new NTypedefDecl(*$2, *$3);
 		SETLINE($$);
 	}
@@ -466,7 +460,7 @@ array_dim
 	;
 
 identifier_type
-	: identifier
+	: type_name
 	{
 		$$ = new NIdentifierType(*$1);
 		SETLINE($$);
@@ -474,7 +468,7 @@ identifier_type
 	;
 
 bitfield_type
-	: identifier TCOLON TINTEGER
+	: type_name TCOLON TINTEGER
 	{
 		if ($1->name.compare("int")) {
 			ASTERR_Bit_Field_With_Non_Int_Type();
@@ -526,13 +520,9 @@ statement_list
 
 statement
 	: function_definition
-	| declarations TSEMICOLON
 	| jump_statement TSEMICOLON
-	| expression TSEMICOLON
-	{
-		$$ = $<statement>1;
-		SETLINE($$);
-	}
+	| expression_statement
+	| declarations TSEMICOLON
 	| block
 	{
 		$$ = $<statement>1;
@@ -540,6 +530,14 @@ statement
 	}
 	| selection_statement
 	| labeled_statement
+	;
+
+expression_statement
+	: expression TSEMICOLON
+	{
+		$$ = $<statement>1;
+		SETLINE($$);
+	}
 	;
 
 selection_statement
@@ -612,6 +610,20 @@ identifier
 	}
 	;
 
+type_name
+	: TTYPE_NAME
+	{
+		$$ = new NIdentifier(*$1);
+		SETLINE($$);
+	}
+	| identifier TDCOLON TTYPE_NAME
+	{
+		$$ = new NIdentifier(*new std::string($1->name + "$" + *$3));
+		SETLINE($$);
+		delete $1;
+	}
+	;
+
 numeric
 	: TINTEGER
 	{
@@ -667,7 +679,12 @@ primary_expression
 
 postfix_expression
 	: primary_expression
-	| postfix_expression TLPAREN call_arguments TRPAREN
+	| postfix_expression TLPAREN TRPAREN
+	{
+		$$ = new NMethodCall(*$1, *new ExpressionList());
+		SETLINE($$);
+	}
+	| postfix_expression TLPAREN expression_list TRPAREN
 	{
 		$$ = new NMethodCall(*$1, *$3);
 		SETLINE($$);
@@ -899,13 +916,5 @@ expression_list
 	{
 		$1->push_back($3);
 	}
-	;
-
-call_arguments
-	: /* Blank */
-	{
-		$$ = new ExpressionList();
-	}
-	| expression_list
 	;
 %%

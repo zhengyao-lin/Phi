@@ -12,6 +12,7 @@ FSUFFIX			(l|L)
 %{
 #include <stdio.h>
 #include <string>
+#include <map>
 #include "AST/Node.h"
 #include "Parser.hpp"
 #include "AST/ASTErr.h"
@@ -23,6 +24,8 @@ FSUFFIX			(l|L)
 int current_line_number = 1;
 std::string* string_literal = NULL;
 bool is_string = false;
+extern CodeGenContext *global_context;
+extern std::map<std::string, int> type_def;
 %}
 
 %option noyywrap
@@ -102,6 +105,9 @@ bool is_string = false;
  /* Constants */
 <INITIAL>{LETTER}({LETTER}|{DIGIT})* {
 	SAVE_TOKEN();
+	if (type_def.find(*yylval.string) != type_def.end()) {
+		return TTYPE_NAME;
+	}
 	return TIDENTIFIER;
 }
 <INITIAL>{DIGIT}+\.{DIGIT}+{FSUFFIX}? {

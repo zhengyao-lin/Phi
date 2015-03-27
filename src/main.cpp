@@ -117,11 +117,13 @@ public:
 
 int llc_main(int argc, char **argv);
 
+CodeGenContext *global_context;
+
 int main(int argc, char **argv)
 {
 	PassManager pm;
-	CodeGenContext context;
 
+	global_context = new CodeGenContext();
 	main_parser = new Parser();
 	IOSetting *settings = new IOSetting(argc, argv);
 	settings->applySetting();
@@ -130,21 +132,21 @@ int main(int argc, char **argv)
 
 	InitializeNativeTarget();
 
-	main_parser->generateAllDecl(context);
-	context.generateCode(*main_parser->getAST());
+	main_parser->generateAllDecl(*global_context);
+	global_context->generateCode(*main_parser->getAST());
 	delete main_parser;
 
 	if (settings->hasObject()) {
 		raw_fd_ostream rfo(settings->getObject().c_str(),
 						   *new string(""), sys::fs::F_RW);
 		pm.add(createPrintModulePass(rfo));
-		pm.run(*context.module);
+		pm.run(*global_context->module);
 		rfo.close();
 	}
 
 	if (!settings->justCompile()) {
-		context.module->dump();
-		context.runCode();
+		global_context->module->dump();
+		global_context->runCode();
 	}
 
 	if (settings->targetASM() && settings->hasObject()) {

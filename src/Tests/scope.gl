@@ -1,23 +1,13 @@
-extern int printf(char *str, ...);
+namespace i {
+	int func() { return 0; }
+}
+
 
 int main()
 {
-	int a;
+	int (*printf)(char *str, ...);
 
-	{
-		double a;
-		a = 10;
-		printf("%f\n", a);
-		{{{
-			printf("%f\n", ++a);
-		}}}
-	}
-
-	{
-		int in_scope = 10;
-	}
-
-	printf("%d\n", in_scope); // Error: Undeclared identifier
+	i::func();
 
 	return 0;
 }

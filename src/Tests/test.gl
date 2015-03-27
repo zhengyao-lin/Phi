@@ -1,8 +1,8 @@
-extern int printf(string str, ...);
-extern void *malloc(Int64 size);
+extern int printf(char *str, ...);
 extern void free(void *ptr);
+extern char *malloc(int:64 size);
 
-delegate int printf_t(string str, ...);
+delegate int printf_t(char *str, ...);
 
 char global1[20] = "adsss";
 
@@ -22,37 +22,13 @@ int main()
 	ChainTable header;
 	ChainTable *next;
 
-	header.Data = 10;
-	next = malloc(sizeof(ChainTable));
-	next->Data = 110;
-	header.next = next;
-	printf("%d\n", header.next->Data);
+	//header.Data = 10;
+	//next = malloc(sizeof(ChainTable));
+	//next->Data = 110;
+	//header.next = next;
+	//printf("%d\n", header.next->Data);
 	
-	string str1 = "hello, world\n";
-	printf(str1);
 
-	int i1 = 1;
-	int i2 = (i1 + 2) * 3;
-	printf("%d\n", i2);
-
-	int **pi1 = malloc(8);
-	//*pi1 = malloc(8);
-	&pi1 = &i1;
-
-	printf("%d\n", *pi1);
-	//printf("calling!\n");
-
-	Int64 i64 = 10;
-
-	printf_t pt1 = printf;
-	pt1("call!\n");
-
-	int i3 = *&*&i1;
-	printf("%d\n", i3);
-
-	free(next);
-
-	printf("%s\n", global1);
 
 	return 0;
 }

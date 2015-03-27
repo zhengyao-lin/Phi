@@ -6,7 +6,7 @@
 
 #define getLine(p) (((NStatement *)this)->lineno)
 
-static vector<Type*>
+vector<Type*>
 getArgTypeList(CodeGenContext& context, ParamList params)
 {
 	vector<Type*> ret;
@@ -111,31 +111,38 @@ NVariableDecl::codeGen(CodeGenContext& context)
 			decl_info_tmp = (*decl_it)->getDeclInfo(context, main_type);
 			tmp_type = decl_info_tmp->type;
 
-			init_value = Constant::getNullValue(tmp_type);
-			if (decl_info_tmp->expr) {
-				if (!(init_value = dyn_cast<Constant>(NAssignmentExpr::doAssignCast(context, decl_info_tmp->expr->codeGen(context),
-																					tmp_type, nullptr,
-																					getLine(this))))) {
-					CGERR_External_Variable_Is_Not_Constant(context);
-					CGERR_setLineNum(context, getLine(this));
-					CGERR_showAllMsg(context);
-					return NULL;
+			if (isFunctionType(tmp_type)) {
+				Function::Create(dyn_cast<FunctionType>(tmp_type),
+								 (specifiers->is_static ? GlobalValue::InternalLinkage
+													    : GlobalValue::ExternalLinkage),
+								 context.formatName(decl_info_tmp->id.name), context.module);
+			} else {
+				init_value = Constant::getNullValue(tmp_type);
+				if (decl_info_tmp->expr) {
+					if (!(init_value = dyn_cast<Constant>(NAssignmentExpr::doAssignCast(context, decl_info_tmp->expr->codeGen(context),
+																						tmp_type, nullptr,
+																						getLine(this))))) {
+						CGERR_External_Variable_Is_Not_Constant(context);
+						CGERR_setLineNum(context, getLine(this));
+						CGERR_showAllMsg(context);
+						return NULL;
+					}
+					// delete decl_info_tmp->expr;
 				}
-				// delete decl_info_tmp->expr;
-			}
 
-			var = new GlobalVariable(*context.module, tmp_type, false,
-									 (specifiers->is_static ? llvm::GlobalValue::InternalLinkage
-															: llvm::GlobalValue::ExternalLinkage),
-									 init_value, context.formatName(decl_info_tmp->id.name)); 
-			context.getGlobals()[context.formatName(decl_info_tmp->id.name)] = var;
+				var = new GlobalVariable(*context.module, tmp_type, false,
+										 (specifiers->is_static ? GlobalValue::InternalLinkage
+																: GlobalValue::ExternalLinkage),
+										 init_value, context.formatName(decl_info_tmp->id.name)); 
+				context.getGlobals()[context.formatName(decl_info_tmp->id.name)] = var;
+			}
 		}
 	}
 
 	return NULL;
 }
 
-static bool
+bool
 checkParam(CodeGenContext& context, int lineno, vector<Type*>& arguments, ParamList& arg_nodes)
 {
 	vector<Type*>::const_iterator param_type_it;
@@ -173,17 +180,12 @@ checkParam(CodeGenContext& context, int lineno, vector<Type*>& arguments, ParamL
 Value*
 NDelegateDecl::codeGen(CodeGenContext& context)
 {
-    vector<Type*> arg_types;
 	FunctionType *ftype;
-	Type *ret_type;
 	DeclInfo *decl_info;
 
 	decl_info = decl.getDeclInfo(context, type.getType(context));
-	ret_type = decl_info->type;
-	arg_types = getArgTypeList(context, arguments);
-	checkParam(context, getLine(this), arg_types, arguments);
 
-	ftype = FunctionType::get(ret_type, makeArrayRef(arg_types), has_vargs);
+	ftype = dyn_cast<FunctionType>(decl_info->type);
 	context.setType(context.formatName(decl_info->id.name), ftype->getPointerTo());
 
 	return NULL;
@@ -351,11 +353,8 @@ NFunctionDecl::codeGen(CodeGenContext& context)
 	}
 
 	main_decl_info = decl.getDeclInfo(context, specifiers->type->getType(context));
-	ret_type = main_decl_info->type;
-	arg_types = getArgTypeList(context, arguments);
-	checkParam(context, getLine(this), arg_types, arguments);
-
-	ftype = FunctionType::get(ret_type, makeArrayRef(arg_types), has_vargs);
+	ret_type = dyn_cast<FunctionType>(main_decl_info->type)->getReturnType();
+	ftype = dyn_cast<FunctionType>(main_decl_info->type);
 
 	if (!(function = context.module->getFunction(context.formatName(main_decl_info->id.name)))) {
 		function = Function::Create(ftype,
@@ -414,8 +413,8 @@ NFunctionDecl::codeGen(CodeGenContext& context)
 			function->addFnAttr("no-frame-pointer-elim-non-leaf");
 		}
 
-		for (param_it = arguments.begin(), arg_it = function->arg_begin();
-			 param_it != arguments.end(); param_it++, arg_it++) {
+		for (param_it = main_decl_info->arguments->begin(), arg_it = function->arg_begin();
+			 param_it != main_decl_info->arguments->end(); param_it++, arg_it++) {
 			decl_info_tmp = (*param_it)->decl.getDeclInfo(context, (*param_it)->type.getType(context));
 			if (decl_info_tmp) {
 				if (decl_info_tmp->id.name != "") {

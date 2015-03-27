@@ -30,6 +30,7 @@ public:
 	llvm::Type *type;
 	NIdentifier& id;
 	NExpression *expr = NULL;
+	ParamList *arguments = NULL;
 
 	DeclInfo(llvm::Type *type, NIdentifier& id) :
 	type(type), id(id) { }
@@ -96,6 +97,29 @@ public:
 	virtual ~PointerDeclarator()
 	{
 		delete &decl;
+	}
+
+	virtual DeclInfo *getDeclInfo(CodeGenContext& context, llvm::Type *base_type);
+};
+
+class ParamDeclarator : public Declarator {
+public:
+	int lineno = -1;
+	Declarator& decl;
+	ParamList& arguments;
+	bool has_vargs;
+
+	ParamDeclarator(Declarator& decl, ParamList& arguments, bool has_vargs) :
+	decl(decl), arguments(arguments), has_vargs(has_vargs) { }
+
+	~ParamDeclarator()
+	{
+		delete &decl;
+
+		ParamList::const_iterator it;
+		for (it = arguments.begin(); it != arguments.end(); it++) {
+			delete *it;
+		}
 	}
 
 	virtual DeclInfo *getDeclInfo(CodeGenContext& context, llvm::Type *base_type);
@@ -566,24 +590,14 @@ public:
 	int lineno = -1;
 	NType& type;
 	Declarator& decl;
-	bool has_vargs;
-	ParamList &arguments;
 
-	NDelegateDecl(NType& type, Declarator& decl,
-				  ParamList& arguments, bool has_vargs) :
-	type(type), decl(decl), arguments(arguments), has_vargs(has_vargs) { }
+	NDelegateDecl(NType& type, Declarator& decl) :
+	type(type), decl(decl) { }
 
 	virtual ~NDelegateDecl()
 	{
 		delete &type;
 		delete &decl;
-
-		ParamList::const_iterator it;
-		for (it = arguments.begin(); it != arguments.end(); it++) {
-			delete *it;
-		}
-
-		delete &arguments;
 	}
 
     virtual llvm::Value* codeGen(CodeGenContext& context);
@@ -758,27 +772,18 @@ public:
 	int lineno = -1;
 	DeclSpecifier& func_specifier;
 	Declarator& decl;
-	bool has_vargs;
-	ParamList& arguments;
 	NBlock *block;
 
 	// specifiers: will be set by specifier
 	SpecifierSet *specifiers;
 
 	NFunctionDecl(DeclSpecifier& func_specifier, Declarator& decl,
-				  ParamList& arguments, NBlock *block, bool has_vargs) :
-	func_specifier(func_specifier), decl(decl), arguments(arguments), block(block),
-	has_vargs(has_vargs) { specifiers = new SpecifierSet(); }
+				  NBlock *block) :
+	func_specifier(func_specifier), decl(decl), block(block) { specifiers = new SpecifierSet(); }
 
 	virtual ~NFunctionDecl()
 	{
 		delete &decl;
-
-		ParamList::const_iterator it;
-		for (it = arguments.begin(); it != arguments.end(); it++) {
-			delete *it;
-		}
-		delete &arguments;
 
 		DeclSpecifier::iterator di;
 		for (di = func_specifier.begin();

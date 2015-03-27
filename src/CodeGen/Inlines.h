@@ -133,6 +133,11 @@ isInt32Type(Type *T)
 			&& dyn_cast<IntegerType>(T)->getIntegerBitWidth() == 32);
 }
 inline bool
+isFunctionType(Type *T)
+{
+	return dyn_cast<FunctionType>(T) != NULL;
+}
+inline bool
 isVoid(Value *V)
 {
 	return V->getType()->getTypeID() == Type::VoidTyID;
