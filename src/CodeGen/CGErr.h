@@ -334,3 +334,11 @@ CGERR_Invalid_Main_Function_Return_Type(CodeGenContext& context)
 											  "main function return type is supposed to be int"));
 	return;
 }
+
+inline void
+CGERR_Invalid_Use_Of_Void(CodeGenContext& context)
+{
+	context.messages.newMessage(new ErrorInfo(ErrorInfo::Error, true, ErrorInfo::Exit1,
+											  "Invalid use of incompelete type void"));
+	return;
+}

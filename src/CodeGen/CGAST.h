@@ -75,6 +75,8 @@ public:
 	BasicBlock *current_end_block; // used for branch
 	std::string current_namespace;
 
+	int in_param_flag = 0;
+
     CodeGenContext() {
         module = new Module("main", getGlobalContext());
 		builder = new IRBuilder<>(getGlobalContext());

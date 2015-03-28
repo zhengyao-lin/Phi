@@ -15,12 +15,40 @@ codeGenLoadValue(CodeGenContext& context, Value *val)
 		return context.builder->CreateInBoundsGEP(val, makeArrayRef(idxs), "");
 	}*/
 
-	if (context.isLValue()
-		|| isArrayPointer(val)) {
+	if (context.isLValue()) {
 		return val;
 	}
 
 	return context.builder->CreateLoad(val, "");
+}
+
+inline Value *
+getLoadOperand(CodeGenContext& context, Value *val, bool if_delete)
+{
+	LoadInst *load_inst;
+	GetElementPtrInst *get_ptr_inst;
+
+	if (load_inst = dyn_cast<LoadInst>(val)) {
+		val = load_inst->getPointerOperand();
+
+		if (if_delete) {
+			load_inst->removeFromParent();
+			delete load_inst;
+		}
+
+		return val;
+	} else if (get_ptr_inst = dyn_cast<GetElementPtrInst>(val)) {
+		val = get_ptr_inst->getPointerOperand();
+
+		if (if_delete) {
+			get_ptr_inst->removeFromParent();
+			delete get_ptr_inst;
+		}
+
+		return val;
+	}
+
+	return NULL;
 }
 
 Value *
@@ -157,7 +185,8 @@ NBinaryExpr::codeGen(CodeGenContext& context)
 	lhs = lval.codeGen(context);
 	rhs = rval.codeGen(context);
 
-	if (lhs->getType()->isPointerTy() && rhs->getType()->isIntegerTy()) {
+	if ((lhs->getType()->isPointerTy() || lhs->getType()->isArrayTy())
+		&& rhs->getType()->isIntegerTy()) {
 		rhs = NAssignmentExpr::doAssignCast(context, rhs, Type::getInt64Ty(getGlobalContext()), NULL,
 											dyn_cast<NExpression>(this)->lineno);
 		if (op == TSUB) {
@@ -165,11 +194,16 @@ NBinaryExpr::codeGen(CodeGenContext& context)
 											 rhs, "");
 		}
 
+		if (!context.isLValue() && isArray(lhs)) {
+			lhs = getLoadOperand(context, lhs, true);
+		}
+
 		if (isArrayPointer(lhs)) {
 			Value *idxs[] = {
 				ConstantInt::get(Type::getInt64Ty(getGlobalContext()), 0),
 				ConstantInt::get(Type::getInt64Ty(getGlobalContext()), 0)
 			};
+
 			lhs = context.builder->CreateInBoundsGEP(lhs, makeArrayRef(idxs), "");
 		} else if (context.isLValue()) {
 			lhs = context.builder->CreateLoad(lhs);
@@ -240,35 +274,6 @@ NBinaryExpr::codeGen(CodeGenContext& context)
 	return NULL;
 }
 
-inline Value *
-getLoadOperand(CodeGenContext& context, Value *val, bool if_delete)
-{
-	LoadInst *load_inst;
-	GetElementPtrInst *get_ptr_inst;
-
-	if (load_inst = dyn_cast<LoadInst>(val)) {
-		val = load_inst->getPointerOperand();
-
-		if (if_delete) {
-			load_inst->removeFromParent();
-			delete load_inst;
-		}
-
-		return val;
-	} else if (get_ptr_inst = dyn_cast<GetElementPtrInst>(val)) {
-		val = get_ptr_inst->getPointerOperand();
-
-		if (if_delete) {
-			get_ptr_inst->removeFromParent();
-			delete get_ptr_inst;
-		}
-
-		return val;
-	}
-
-	return NULL;
-}
-
 Value *
 NPrefixExpr::codeGen(CodeGenContext& context)
 {
@@ -284,7 +289,14 @@ NPrefixExpr::codeGen(CodeGenContext& context)
 	type_expr_operand = type.getType(context);
 
 	if (op == TMUL) {
-		if (isArrayPointer(val_tmp)) {
+		if (isArray(val_tmp)) {
+			Value *idxs[] = {
+				ConstantInt::get(Type::getInt64Ty(getGlobalContext()), 0),
+				ConstantInt::get(Type::getInt64Ty(getGlobalContext()), 0)
+			};
+			return context.builder->CreateInBoundsGEP(getLoadOperand(context, val_tmp, true),
+													   makeArrayRef(idxs), "");
+		} else if (isArrayPointer(val_tmp) && context.isLValue()) {
 			Value *idxs[] = {
 				ConstantInt::get(Type::getInt64Ty(getGlobalContext()), 0),
 				ConstantInt::get(Type::getInt64Ty(getGlobalContext()), 0)
@@ -292,6 +304,7 @@ NPrefixExpr::codeGen(CodeGenContext& context)
 			return context.builder->CreateInBoundsGEP(val_tmp,
 													   makeArrayRef(idxs), "");
 		}
+
 		if (context.isLValue()
 			&& (typeid(operand) == typeid(NBinaryExpr) // *( expr [+-] expr ) = ?
 			|| typeid(operand) == typeid(NPrefixExpr) // *( ++expr) = ?
@@ -342,8 +355,7 @@ NPrefixExpr::codeGen(CodeGenContext& context)
 	val_type = val_tmp->getType();
 
 	if (op == TINC || op == TDEC) {
-		if (val_type->isPointerTy()
-			&& !isArrayPointer(val_tmp)) {
+		if (val_type->isPointerTy()) {
 			Value *ret_tmp;
 			rhs = ConstantInt::get(Type::getInt64Ty(getGlobalContext()), 1);
 
@@ -572,18 +584,18 @@ NAssignmentExpr::doAssignCast(CodeGenContext& context, Value *value,
 					&& isPointerType(variable_type)
 					&& !context.currentBlock()) {
 			return value;
-		} else if (isArrayPointerType(value_type)
-					&& isArrayPointerType(variable_type)) {
-			Type *val_elem_type = value_type->getPointerElementType();
+		} else if (isArrayType(value_type)
+					&& isArrayType(variable_type)) {
 			if (!variable) {
 				std::abort();
 			}
-			context.builder->CreateMemCpy(variable, value,
-										  getSizeOfJIT(val_elem_type),
-										  getAlignOfJIT(val_elem_type), false);
+			context.builder->CreateMemCpy(variable,
+										  getLoadOperand(context, value, true),
+										  getSizeOfJIT(value_type),
+										  getAlignOfJIT(value_type), false);
 			return NULL;
-		} else if (isArrayPointerType(value_type) && isPointerType(variable_type)) {
-			val_tmp = dyn_cast<Value>(context.builder->CreateConstInBoundsGEP2_32(value, 0, 0, ""));
+		} else if (isArrayType(value_type) && isPointerType(variable_type)) {
+			val_tmp = dyn_cast<Value>(context.builder->CreateConstInBoundsGEP2_32(getLoadOperand(context, value, true), 0, 0, ""));
 			if (isSameType(val_tmp->getType(), variable_type)) {
 				return val_tmp;
 			}
@@ -632,8 +644,7 @@ NAssignmentExpr::codeGen(CodeGenContext& context)
 	context.current_bit_width = 0;
 
 	rhs = NAssignmentExpr::doAssignCast(context, rhs,
-										(!isArrayPointer(lhs) ? lhs->getType()->getPointerElementType()
-															  : lhs->getType()), lhs,
+										lhs->getType()->getPointerElementType(), lhs,
 										((NExpression*)this)->lineno);
 
 	if (!rhs) {
@@ -744,10 +755,7 @@ NArrayExpr::codeGen(CodeGenContext& context)
 			ret = context.builder->CreateInBoundsGEP(array_value, makeArrayRef(idxs), "");
 		}
 	} else if (isPointer(array_value)) {
-		if (typeid(operand) != typeid(NBinaryExpr)) {
-			array_value = context.builder->CreateLoad(array_value);
-		}
-		ret = context.builder->CreateInBoundsGEP(array_value,
+		ret = context.builder->CreateInBoundsGEP(context.builder->CreateLoad(array_value),
 												 idx, "");
 	} else {
 		CGERR_Get_Non_Array_Element(context);
@@ -770,8 +778,7 @@ NIncDecExpr::codeGen(CodeGenContext& context)
 	val_tmp = operand.codeGen(context);
 	val_type = val_tmp->getType();
 
-	if (val_type->isPointerTy()
-		&& !isArrayPointer(val_tmp)) {
+	if (val_type->isPointerTy()) {
 		rhs = ConstantInt::get(Type::getInt64Ty(getGlobalContext()), 1);
 
 		if (op == TDEC) {

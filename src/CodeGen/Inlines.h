@@ -81,6 +81,11 @@ isArrayType(Type *T)
 	return T->getTypeID() == Type::ArrayTyID;
 }
 inline bool
+isArray(Value *V)
+{
+	return V->getType()->getTypeID() == Type::ArrayTyID;
+}
+inline bool
 isPointerType(Type *T)
 {
 	return T->getTypeID() == Type::PointerTyID;

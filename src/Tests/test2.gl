@@ -54,7 +54,7 @@ int main()
 	printf("%d\n", true >> false);
 
 	int *i;
-	i= malloc(sizeof(int) * 20);
+	i = malloc(sizeof(int) * 20);
 
 	i[19] = 123;
 	printf("%d\n", i[19]);

@@ -92,12 +92,8 @@ NTypeof::getType(CodeGenContext& context)
 	tmp_val = operand.codeGen(context);
 	if (is_lval) context.setLValue();
 
-	delete context.builder->GetInsertBlock();
+	//delete context.builder->GetInsertBlock();
 	context.builder->restoreIP(backup);
-
-	if (isArrayPointer(tmp_val)) {
-		return tmp_val->getType()->getArrayElementType();
-	}
 
 	return tmp_val->getType();
 }

@@ -24,7 +24,8 @@ ArrayDeclarator::getDeclInfo(CodeGenContext& context, llvm::Type *base_type)
 	elem_type = base_type;
 	for (arr_dim_di = array_dim.begin();
 		 arr_dim_di != array_dim.end(); arr_dim_di++) {
-		if (*arr_dim_di) { // equals []
+		if (*arr_dim_di
+			&& !context.in_param_flag) {
 			tmp_value = NAssignmentExpr::doAssignCast(context, (**arr_dim_di).codeGen(context),
 													  Type::getInt64Ty(getGlobalContext()),
 													  nullptr, lineno);
@@ -36,8 +37,10 @@ ArrayDeclarator::getDeclInfo(CodeGenContext& context, llvm::Type *base_type)
 				CGERR_showAllMsg(context);
 				return NULL;
 			}
-		} else {
+		} else if (context.in_param_flag) {
 			elem_type = PointerType::getUnqual(elem_type);
+		} else {
+			elem_type = ArrayType::get(elem_type, 0);
 		}
 	}
 

@@ -1,6 +1,5 @@
 /* RUN: %clang_cc1 -fsyntax-only -verify -std=c90 -pedantic %s
  */
-
 void
 foo (void)
 {
@@ -11,7 +10,7 @@ foo (void)
 
 void foo2 (void)
 {
- typedef int *arrayptr[];
+ typedef int (*arrayptr)[];
  arrayptr x = 0;
  arrayptr y = &*x;
 }
@@ -40,6 +39,10 @@ extern CVT cv3;
 
 void *foo6 (void)
 {
+  extern int aa;
   return &cv3;
 }
+
+void main()
+{}
 

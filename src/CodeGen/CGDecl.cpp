@@ -20,6 +20,7 @@ getArgTypeList(CodeGenContext& context, ParamList params)
 	DeclInfo *decl_info_tmp;
 	Type *tmp_type;
 
+	context.in_param_flag++;
 	for (param_it = params.begin();
 		 param_it != params.end(); param_it++) {
 		decl_info_tmp = (*param_it)->decl.getDeclInfo(context,
@@ -30,6 +31,7 @@ getArgTypeList(CodeGenContext& context, ParamList params)
 		}
 		delete decl_info_tmp;
 	}
+	context.in_param_flag--;
 
 	return ret;
 }
@@ -85,7 +87,7 @@ NVariableDecl::codeGen(CodeGenContext& context)
 	AllocaInst *alloc_inst;
 	NIdentifier *id;
 	NAssignmentExpr *assign;
-	Constant *init_value;
+	Constant *init_value = NULL;
 	Type *main_type;
 	Type *tmp_type;
 	DeclSpecifier::const_iterator decl_spec_it;
@@ -97,11 +99,17 @@ NVariableDecl::codeGen(CodeGenContext& context)
 
 	main_type = specifiers->type->getType(context);
 
-	if (context.currentBlock()) {
+	if (context.currentBlock() && specifiers->is_static) {
 		for (decl_it = declarator_list->begin();
 			 decl_it != declarator_list->end(); decl_it++) {
 			decl_info_tmp = (*decl_it)->getDeclInfo(context, main_type);
 			tmp_type = decl_info_tmp->type;
+			if (tmp_type->isVoidTy()) {
+				CGERR_Invalid_Use_Of_Void(context);
+				CGERR_setLineNum(context, getLine(this));
+				CGERR_showAllMsg(context);
+				return NULL;
+			}
 
 			alloc_inst = context.builder->CreateAlloca(tmp_type, nullptr, decl_info_tmp->id->name.c_str());
 			context.getTopLocals()[decl_info_tmp->id->name] = alloc_inst;
@@ -126,7 +134,21 @@ NVariableDecl::codeGen(CodeGenContext& context)
 													    : GlobalValue::ExternalLinkage),
 								 context.formatName(decl_info_tmp->id->name), context.module);
 			} else {
-				init_value = Constant::getNullValue(tmp_type);
+				if (tmp_type->isVoidTy()) {
+					if (!specifiers->is_static) {
+						tmp_type = context.builder->getInt8Ty();
+					} else {
+						CGERR_Invalid_Use_Of_Void(context);
+						CGERR_setLineNum(context, getLine(this));
+						CGERR_showAllMsg(context);
+						return NULL;
+					}
+				}
+
+				if (specifiers->is_static) {
+					init_value = Constant::getNullValue(tmp_type);
+				}
+
 				if (decl_info_tmp->expr) {
 					if (!(init_value = dyn_cast<Constant>(NAssignmentExpr::doAssignCast(context, decl_info_tmp->expr->codeGen(context),
 																						tmp_type, nullptr,
@@ -161,6 +183,7 @@ checkParam(CodeGenContext& context, int lineno, vector<Type*>& arguments, ParamL
 	DeclInfo *decl_info_tmp;
 	Type *type_tmp;
 
+	context.in_param_flag++;
 	for (param_type_it = arguments.begin(), param_it = arg_nodes.begin();
 		 param_type_it != arguments.end();
 		 param_type_it++, param_it++) {
@@ -185,6 +208,7 @@ checkParam(CodeGenContext& context, int lineno, vector<Type*>& arguments, ParamL
 		}
 		delete decl_info_tmp;
 	}
+	context.in_param_flag--;
 
 	return true;
 }
@@ -432,6 +456,7 @@ NFunctionDecl::codeGen(CodeGenContext& context)
 			function->addFnAttr("no-frame-pointer-elim-non-leaf");
 		}
 
+		context.in_param_flag++;
 		for (param_it = main_decl_info->arguments->begin(), arg_it = function->arg_begin();
 			 param_it != main_decl_info->arguments->end(); param_it++, arg_it++) {
 			decl_info_tmp = (*param_it)->decl.getDeclInfo(context, (*param_it)->type.getType(context));
@@ -452,6 +477,7 @@ NFunctionDecl::codeGen(CodeGenContext& context)
 			}
 			delete decl_info_tmp;
 		}
+		context.in_param_flag--;
 
 		block->codeGen(context);
 		if (!context.currentBlock()->getTerminator()) {

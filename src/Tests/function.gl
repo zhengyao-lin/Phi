@@ -25,7 +25,7 @@ int main()
 {
 	int i = 2;
 	int array[10 + 3 - 2 - 1 * 109 / (100 + 9) + sizeof(int)];
-	array[i] = 3;
+	array[i] = 10221;
 	typeof(array) array2 = array;
 
 	printf("%d\n", array2[2]);

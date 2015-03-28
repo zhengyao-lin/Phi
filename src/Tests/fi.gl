@@ -15,8 +15,6 @@ int fi(int n, int m)
 
 static int ip = 0;
 
-delegate int nnn(double ttt);
-
 namespace sd {
 	namespace subtype {
 		typedef struct occ { double ppp; } occt;
@@ -24,7 +22,7 @@ namespace sd {
 			int i;
 		};
 	}
-	char nsp_array[10];
+	static char nsp_array[10];
 	int env2(int i)
 	{
 		subtype::occt obj;
@@ -61,6 +59,7 @@ int main(void)
 		goto WHILE1;
 	}
 
+
 	printf("%d\n", ip = 120);
 
 	{
@@ -69,6 +68,7 @@ int main(void)
 		**((i+1)[0]) = 10;
 		printf("%d\n", (i+1)[0][0][0]);
 	}
+
 
 	{
 		int i[2];
@@ -86,13 +86,15 @@ int main(void)
 
 	{
 		int i[10];
-		printf("%d, %d\n", &i[0], i);
+		int *a;
+		a = i;
 	}
 
 	{
 		void* x = 0;
 		void* y = &*x;
 	}
+
 
 	return 0;
 }

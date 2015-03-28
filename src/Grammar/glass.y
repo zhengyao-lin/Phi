@@ -535,6 +535,11 @@ statement
 	| jump_statement TSEMICOLON
 	| expression_statement
 	| declarations TSEMICOLON
+	{
+		if (dynamic_cast<NVariableDecl*>($1)) {
+			dynamic_cast<NVariableDecl*>($1)->specifiers->is_static = true;
+		}
+	}
 	| block
 	{
 		$$ = $<statement>1;
