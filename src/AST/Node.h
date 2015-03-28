@@ -15,6 +15,7 @@ class NStructDecl;
 class NUnionDecl;
 class NSpecifier;
 class NFunctionDecl;
+class DeclInfo;
 class Declarator;
 
 typedef std::vector<NStatement*> StatementList;
@@ -25,21 +26,52 @@ typedef std::vector<NExpression*> ArrayDim;
 typedef std::vector<NSpecifier*> DeclSpecifier;
 typedef std::vector<Declarator *> DeclaratorList;
 
+class Node {
+public:
+	int lineno = -1;
+	virtual ~Node() {}
+	virtual llvm::Value* codeGen(CodeGenContext& context) { return NULL; }
+};
+class NStatement : public Node {
+public:
+	int lineno = -1;
+	virtual ~NStatement() {}
+};
+class NExpression : public NStatement {
+public:
+	int lineno = -1;
+	virtual ~NExpression() {}
+};
+
+class NIdentifier : public NExpression {
+public:
+	int lineno = -1;
+	std::string& name;
+
+	NIdentifier(std::string& name) :
+	name(name) { }
+
+	virtual ~NIdentifier()
+	{
+		delete &name;
+	}
+
+	virtual llvm::Value* codeGen(CodeGenContext& context);
+};
+
 class DeclInfo {
 public:
 	llvm::Type *type;
-	NIdentifier& id;
+	NIdentifier *id = NULL;
 	NExpression *expr = NULL;
 	ParamList *arguments = NULL;
 
-	DeclInfo(llvm::Type *type, NIdentifier& id) :
+	DeclInfo(llvm::Type *type, NIdentifier *id) :
 	type(type), id(id) { }
 
 	virtual ~DeclInfo()
 	{
-		delete &id;
-		if (expr)
-			delete expr;
+		delete id;
 	}
 };
 
@@ -48,20 +80,23 @@ class Declarator {
 public:
 	int lineno = -1;
 	virtual ~Declarator() {}
-	virtual DeclInfo *getDeclInfo(CodeGenContext& context, llvm::Type *base_type) { return NULL; }
+	virtual DeclInfo *getDeclInfo(CodeGenContext& context, llvm::Type *base_type)
+	{
+		return new DeclInfo(base_type, NULL);
+	}
 };
 
 class IdentifierDeclarator : public Declarator {
 public:
 	int lineno = -1;
-	NIdentifier& id;
+	NIdentifier &id;
 
 	IdentifierDeclarator(NIdentifier& id) :
 	id(id) { }
 
 	virtual ~IdentifierDeclarator()
 	{
-		//delete &id;
+		delete &id;
 	}
 
 	virtual DeclInfo *getDeclInfo(CodeGenContext& context, llvm::Type *base_type);
@@ -120,6 +155,7 @@ public:
 		for (it = arguments.begin(); it != arguments.end(); it++) {
 			delete *it;
 		}
+		delete &arguments;
 	}
 
 	virtual DeclInfo *getDeclInfo(CodeGenContext& context, llvm::Type *base_type);
@@ -129,7 +165,7 @@ class InitDeclarator : public Declarator {
 public:
 	int lineno = -1;
 	Declarator& decl;
-	NExpression *initializer;
+	NExpression *initializer = NULL;
 
 	InitDeclarator(Declarator& decl, NExpression *initializer) :
 	decl(decl), initializer(initializer) { }
@@ -137,7 +173,6 @@ public:
 	virtual ~InitDeclarator()
 	{
 		delete &decl;
-		//delete initializer;
 	}
 
 	virtual DeclInfo *getDeclInfo(CodeGenContext& context, llvm::Type *base_type);
@@ -175,8 +210,8 @@ public:
 
 	virtual ~SpecifierSet()
 	{
-		//if (type)
-			//delete type;
+		if (type)
+			delete type;
 	}
 };
 
@@ -207,45 +242,10 @@ public:
 
 	virtual ~NTypeSpecifier()
 	{
-		delete &type;
+		//delete &type;
 	}
 
 	virtual void setSpecifier(SpecifierSet *dest);
-};
-
-// Node
-class Node {
-public:
-	int lineno = -1;
-	virtual ~Node() {}
-	virtual llvm::Value* codeGen(CodeGenContext& context) { return NULL; }
-};
-class NStatement : public Node {
-public:
-	int lineno = -1;
-	virtual ~NStatement() {}
-};
-class NExpression : public NStatement {
-public:
-	int lineno = -1;
-	virtual ~NExpression() {}
-};
-
-// Primary Expression
-class NIdentifier : public NExpression {
-public:
-	int lineno = -1;
-	std::string& name;
-
-	NIdentifier(std::string& name) :
-	name(name) { }
-
-	virtual ~NIdentifier()
-	{
-		delete &name;
-	}
-
-	virtual llvm::Value* codeGen(CodeGenContext& context);
 };
 
 class NIdentifierType : public NType {
@@ -253,7 +253,7 @@ public:
 	int lineno = -1;
 	NIdentifier& type;
 	
-	NIdentifierType(NIdentifier& type) :
+	NIdentifierType(NIdentifier &type) :
 	type(type) { }
 
 	virtual ~NIdentifierType()

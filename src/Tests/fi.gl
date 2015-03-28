@@ -34,7 +34,7 @@ namespace sd {
 	}
 }
 
-int main()
+int main(void)
 {
 	//typedef struct occ { int iii; } occt;
 	struct sd::subtype::incomp oo;

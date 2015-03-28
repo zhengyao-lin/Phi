@@ -67,6 +67,10 @@ public:
 		}
 	}
 
+	virtual ~IOSetting()
+	{
+	}
+
 	ArgumentType getArg(char *arg)
 	{
 		if (ARG_MAP.find(arg) != ARG_MAP.end()) {
@@ -155,6 +159,8 @@ int main(int argc, char **argv)
 	}
 
 	llvm_shutdown();
+	delete global_context;
+	delete settings;
 
 	return 0;
 }

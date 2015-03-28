@@ -9,7 +9,7 @@
 DeclInfo *
 IdentifierDeclarator::getDeclInfo(CodeGenContext& context, llvm::Type *base_type)
 {
-	return new DeclInfo(base_type, id);
+	return new DeclInfo(base_type, new NIdentifier(*new string(id.name)));
 }
 
 DeclInfo *

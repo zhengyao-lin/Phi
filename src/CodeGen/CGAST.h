@@ -213,8 +213,8 @@ public:
 		return;
 	}
 
-	inline std::string
-	formatName(std::string name)
+	inline const std::string
+	formatName(const std::string &name)
 	{
 		return current_namespace + name;
 	}

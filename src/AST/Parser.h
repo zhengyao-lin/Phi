@@ -52,6 +52,7 @@ public:
 		yyin = fp;
 		yyparse();
 		yylex_destroy();
+		fclose(fp);
 
 		return;
 	}

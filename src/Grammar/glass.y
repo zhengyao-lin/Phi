@@ -338,9 +338,13 @@ variable_declaration
 delegate_declaration
 	: TDELEGATE type_specifier declarator
 	{
-		type_def[$3->getDeclInfo(*global_context, NULL)->id.name] = 0;
+		DeclInfo *decl_info = $3->getDeclInfo(*global_context, NULL);
+		type_def[decl_info->id->name] = 0;
+
 		$$ = new NDelegateDecl(*$2, *$3);
 		SETLINE($$);
+
+		delete decl_info;
 	}
 	| TDELEGATE TSTATIC type_specifier declarator
 	{
@@ -348,9 +352,13 @@ delegate_declaration
 		ASTERR_setLineNumber();
 		ASTERR_showAllMsg();
 
-		type_def[$4->getDeclInfo(*global_context, NULL)->id.name] = 0;
+		DeclInfo *decl_info = $4->getDeclInfo(*global_context, NULL);
+		type_def[decl_info->id->name] = 0;
+
 		$$ = new NDelegateDecl(*$3, *$4);
 		SETLINE($$);
+
+		delete decl_info;
 	}
 	;
 
@@ -419,9 +427,13 @@ union_declaration
 typedef_declaration
 	: TTYPEDEF type_specifier declarator
 	{
-		type_def[$3->getDeclInfo(*global_context, NULL)->id.name] = 0;
+		DeclInfo *decl_info = $3->getDeclInfo(*global_context, NULL);
+		type_def[decl_info->id->name] = 0;
+
 		$$ = new NTypedefDecl(*$2, *$3);
 		SETLINE($$);
+
+		delete decl_info;
 	}
 	;
 
@@ -606,7 +618,9 @@ identifier
 	{
 		$$ = new NIdentifier(*new std::string($1->name + "$" + *$3));
 		SETLINE($$);
+
 		delete $1;
+		delete $3;
 	}
 	;
 
@@ -620,7 +634,9 @@ type_name
 	{
 		$$ = new NIdentifier(*new std::string($1->name + "$" + *$3));
 		SETLINE($$);
+
 		delete $1;
+		delete $3;
 	}
 	;
 

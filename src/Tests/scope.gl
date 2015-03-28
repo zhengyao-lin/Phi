@@ -1,13 +1,4 @@
-namespace i {
-	int func() { return 0; }
-}
-
-
 int main()
 {
-	int (*printf)(char *str, ...);
-
-	i::func();
-
-	return 0;
+	typedef int sssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss;
 }

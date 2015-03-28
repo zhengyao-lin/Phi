@@ -6,6 +6,12 @@
 
 #define getLine(p) (((NStatement *)this)->lineno)
 
+inline void
+cleanDeclInfo(DeclInfo *decl_info)
+{
+	delete decl_info;
+}
+
 vector<Type*>
 getArgTypeList(CodeGenContext& context, ParamList params)
 {
@@ -17,11 +23,12 @@ getArgTypeList(CodeGenContext& context, ParamList params)
 	for (param_it = params.begin();
 		 param_it != params.end(); param_it++) {
 		decl_info_tmp = (*param_it)->decl.getDeclInfo(context,
-												 (*param_it)->type.getType(context));
+													  (*param_it)->type.getType(context));
 		if (decl_info_tmp) {
 			tmp_type = decl_info_tmp->type;
 			ret.push_back(tmp_type);
 		}
+		delete decl_info_tmp;
 	}
 
 	return ret;
@@ -96,14 +103,16 @@ NVariableDecl::codeGen(CodeGenContext& context)
 			decl_info_tmp = (*decl_it)->getDeclInfo(context, main_type);
 			tmp_type = decl_info_tmp->type;
 
-			alloc_inst = context.builder->CreateAlloca(tmp_type, nullptr, decl_info_tmp->id.name.c_str());
-			context.getTopLocals()[decl_info_tmp->id.name] = alloc_inst;
+			alloc_inst = context.builder->CreateAlloca(tmp_type, nullptr, decl_info_tmp->id->name.c_str());
+			context.getTopLocals()[decl_info_tmp->id->name] = alloc_inst;
 			if (decl_info_tmp->expr) {
-				id = &decl_info_tmp->id;
+				id = new NIdentifier(*new string(decl_info_tmp->id->name));
 				assign = new NAssignmentExpr(*id, *decl_info_tmp->expr);
 				assign->codeGen(context);
 				delete assign;
 			}
+
+			delete decl_info_tmp;
 		}
 	} else {
 		for (decl_it = declarator_list->begin();
@@ -115,7 +124,7 @@ NVariableDecl::codeGen(CodeGenContext& context)
 				Function::Create(dyn_cast<FunctionType>(tmp_type),
 								 (specifiers->is_static ? GlobalValue::InternalLinkage
 													    : GlobalValue::ExternalLinkage),
-								 context.formatName(decl_info_tmp->id.name), context.module);
+								 context.formatName(decl_info_tmp->id->name), context.module);
 			} else {
 				init_value = Constant::getNullValue(tmp_type);
 				if (decl_info_tmp->expr) {
@@ -127,15 +136,17 @@ NVariableDecl::codeGen(CodeGenContext& context)
 						CGERR_showAllMsg(context);
 						return NULL;
 					}
-					// delete decl_info_tmp->expr;
+					delete decl_info_tmp->expr;
 				}
 
 				var = new GlobalVariable(*context.module, tmp_type, false,
 										 (specifiers->is_static ? GlobalValue::InternalLinkage
 																: GlobalValue::ExternalLinkage),
-										 init_value, context.formatName(decl_info_tmp->id.name)); 
-				context.getGlobals()[context.formatName(decl_info_tmp->id.name)] = var;
+										 init_value, context.formatName(decl_info_tmp->id->name)); 
+				context.getGlobals()[context.formatName(decl_info_tmp->id->name)] = var;
 			}
+
+			delete decl_info_tmp;
 		}
 	}
 
@@ -156,7 +167,7 @@ checkParam(CodeGenContext& context, int lineno, vector<Type*>& arguments, ParamL
 		type_tmp = (*param_it)->type.getType(context);
 		decl_info_tmp = (*param_it)->decl.getDeclInfo(context, type_tmp);
 		if (isVoidType(*param_type_it)) { // param has void type
-			if (decl_info_tmp->id.name != "") {
+			if (decl_info_tmp->id) {
 				CGERR_Void_Type_Param(context);
 				CGERR_setLineNum(context, lineno);
 				CGERR_showAllMsg(context);
@@ -172,6 +183,7 @@ checkParam(CodeGenContext& context, int lineno, vector<Type*>& arguments, ParamL
 			param_type_it--;
 			param_it--;
 		}
+		delete decl_info_tmp;
 	}
 
 	return true;
@@ -186,7 +198,9 @@ NDelegateDecl::codeGen(CodeGenContext& context)
 	decl_info = decl.getDeclInfo(context, type.getType(context));
 
 	ftype = dyn_cast<FunctionType>(decl_info->type);
-	context.setType(context.formatName(decl_info->id.name), ftype->getPointerTo());
+	context.setType(context.formatName(decl_info->id->name), ftype->getPointerTo());
+
+	delete decl_info;
 
 	return NULL;
 }
@@ -231,7 +245,7 @@ NStructDecl::codeGen(CodeGenContext& context)
 			for (decl_it = (**var_it).declarator_list->begin();
 				 decl_it != (**var_it).declarator_list->end(); decl_it++, i++) {
 				decl_info_tmp = (*decl_it)->getDeclInfo(context, tmp_type);
-				field_map[decl_info_tmp->id.name] = i;
+				field_map[decl_info_tmp->id->name] = i;
 
 				field_types.push_back(decl_info_tmp->type);
 
@@ -241,6 +255,8 @@ NStructDecl::codeGen(CodeGenContext& context)
 					CGERR_showAllMsg(context);
 					return NULL;
 				}
+
+				delete decl_info_tmp;
 			}
 		}
 		struct_type->setBody(makeArrayRef(field_types), true);
@@ -298,7 +314,7 @@ NUnionDecl::codeGen(CodeGenContext& context)
 				decl_info_tmp = (*decl_it)->getDeclInfo(context, main_type);
 				tmp_type = decl_info_tmp->type;
 
-				field_map[decl_info_tmp->id.name] = tmp_type;
+				field_map[decl_info_tmp->id->name] = tmp_type;
 
 				if (getConstantIntExprJIT(ConstantExpr::getSizeOf(tmp_type)) > max_size) {
 					max_sized_type = tmp_type;
@@ -310,6 +326,7 @@ NUnionDecl::codeGen(CodeGenContext& context)
 					CGERR_showAllMsg(context);
 					return NULL;
 				}
+				delete decl_info_tmp;
 			}
 		}
 		field_types.push_back(max_sized_type);
@@ -326,7 +343,9 @@ NTypedefDecl::codeGen(CodeGenContext& context)
 	DeclInfo *decl_info = decl.getDeclInfo(context, type.getType(context));
 	Type *tmp_type = decl_info->type;
 
-	context.setType(context.formatName(decl_info->id.name), tmp_type);
+	context.setType(context.formatName(decl_info->id->name), tmp_type);
+
+	delete decl_info;
 
 	return NULL;
 }
@@ -356,11 +375,11 @@ NFunctionDecl::codeGen(CodeGenContext& context)
 	ret_type = dyn_cast<FunctionType>(main_decl_info->type)->getReturnType();
 	ftype = dyn_cast<FunctionType>(main_decl_info->type);
 
-	if (!(function = context.module->getFunction(context.formatName(main_decl_info->id.name)))) {
+	if (!(function = context.module->getFunction(context.formatName(main_decl_info->id->name)))) {
 		function = Function::Create(ftype,
 									(specifiers->is_static ? GlobalValue::InternalLinkage
 														   : GlobalValue::ExternalLinkage),
-									context.formatName(main_decl_info->id.name), context.module);
+									context.formatName(main_decl_info->id->name), context.module);
 	} else {
 		for (param_type_it = arg_types.begin(), arg_it = function->arg_begin();
 			 param_type_it != arg_types.end() && arg_it != function->arg_end();
@@ -373,7 +392,7 @@ NFunctionDecl::codeGen(CodeGenContext& context)
 
 		if (param_type_it != arg_types.end()
 			|| arg_it != function->arg_end()) {
-			CGERR_Conflicting_Type(context, main_decl_info->id.name.c_str(), param_type_it - arg_types.begin() + 1);
+			CGERR_Conflicting_Type(context, main_decl_info->id->name.c_str(), param_type_it - arg_types.begin() + 1);
 			CGERR_setLineNum(context, getLine(this));
 			CGERR_showAllMsg(context);
 			return NULL;
@@ -389,7 +408,7 @@ NFunctionDecl::codeGen(CodeGenContext& context)
 		}
 
 		if (function->begin() != function->end()) {
-			CGERR_Redefinition_Of_Function(context, main_decl_info->id.name.c_str());
+			CGERR_Redefinition_Of_Function(context, main_decl_info->id->name.c_str());
 			CGERR_setLineNum(context, getLine(this));
 			CGERR_showAllMsg(context);
 			return NULL;
@@ -399,7 +418,7 @@ NFunctionDecl::codeGen(CodeGenContext& context)
 		context.pushBlock(bblock);
 		context.builder->SetInsertPoint(context.currentBlock());
 
-		if (!context.formatName(main_decl_info->id.name).compare("main")) { // name is "main"
+		if (!context.formatName(main_decl_info->id->name).compare("main")) { // name is "main"
 			if (isInt32Type(function->getReturnType())) {
 				context.builder->CreateAlloca(function->getReturnType(), nullptr, "");
 			} else {
@@ -417,11 +436,11 @@ NFunctionDecl::codeGen(CodeGenContext& context)
 			 param_it != main_decl_info->arguments->end(); param_it++, arg_it++) {
 			decl_info_tmp = (*param_it)->decl.getDeclInfo(context, (*param_it)->type.getType(context));
 			if (decl_info_tmp) {
-				if (decl_info_tmp->id.name != "") {
-					arg_it->setName(decl_info_tmp->id.name.c_str());
+				if (decl_info_tmp->id->name != "") {
+					arg_it->setName(decl_info_tmp->id->name.c_str());
 					AllocaInst *alloc_inst = context.builder->CreateAlloca(arg_it->getType(), nullptr, "");
 					context.builder->CreateStore(arg_it, alloc_inst);
-					context.getTopLocals()[decl_info_tmp->id.name] = alloc_inst;
+					context.getTopLocals()[decl_info_tmp->id->name] = alloc_inst;
 				} else {
 					CGERR_Useless_Param(context);
 					CGERR_setLineNum(context, getLine(this));
@@ -431,6 +450,7 @@ NFunctionDecl::codeGen(CodeGenContext& context)
 					context.builder->CreateStore(arg_it, alloc_inst);
 				}
 			}
+			delete decl_info_tmp;
 		}
 
 		block->codeGen(context);
@@ -446,6 +466,8 @@ NFunctionDecl::codeGen(CodeGenContext& context)
 		}
 		context.popAllBlock();
 	}
+
+	delete main_decl_info;
 
 	return function;
 }
