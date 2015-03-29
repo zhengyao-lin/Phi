@@ -13,14 +13,14 @@ NSpecifier::setSpecifier(SpecifierSet *dest)
 void
 NExternSpecifier::setSpecifier(SpecifierSet *dest)
 {
-	dest->is_static = false;
+	dest->linkage = GlobalValue::ExternalLinkage;
 	return;
 }
 
 void
 NStaticSpecifier::setSpecifier(SpecifierSet *dest)
 {
-	dest->is_static = true;
+	dest->linkage = GlobalValue::InternalLinkage;
 	return;
 }
 

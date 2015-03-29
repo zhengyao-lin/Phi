@@ -4,6 +4,7 @@
 #include <iostream>
 #include <vector>
 #include <llvm/IR/Value.h>
+#include <llvm/IR/GlobalValue.h>
 
 class CodeGenContext;
 class NStatement;
@@ -205,7 +206,7 @@ public:
 
 class SpecifierSet {
 public:
-	bool is_static = false;
+	llvm::GlobalValue::LinkageTypes linkage = llvm::GlobalValue::CommonLinkage;
 	NType *type = NULL;
 
 	virtual ~SpecifierSet()

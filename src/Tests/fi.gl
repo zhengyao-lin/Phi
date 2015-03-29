@@ -29,7 +29,7 @@ namespace sd {
 		};
 	}
 
-	static char nsp_array[10];
+	char nsp_array[10];
 	int print_where();
 
 	int env2(int i)

@@ -99,7 +99,8 @@ NVariableDecl::codeGen(CodeGenContext& context)
 
 	main_type = specifiers->type->getType(context);
 
-	if (context.currentBlock() && specifiers->is_static) {
+	if (context.currentBlock()
+		&& specifiers->linkage != GlobalValue::ExternalLinkage) {
 		for (decl_it = declarator_list->begin();
 			 decl_it != declarator_list->end(); decl_it++) {
 			decl_info_tmp = (*decl_it)->getDeclInfo(context, main_type);
@@ -130,12 +131,11 @@ NVariableDecl::codeGen(CodeGenContext& context)
 
 			if (isFunctionType(tmp_type)) {
 				Function::Create(dyn_cast<FunctionType>(tmp_type),
-								 (specifiers->is_static ? GlobalValue::InternalLinkage
-													    : GlobalValue::ExternalLinkage),
+								 specifiers->linkage,
 								 context.formatName(decl_info_tmp->id->name), context.module);
 			} else {
 				if (tmp_type->isVoidTy()) {
-					if (!specifiers->is_static) {
+					if (specifiers->linkage == GlobalValue::ExternalLinkage) {
 						tmp_type = context.builder->getInt8Ty();
 					} else {
 						CGERR_Invalid_Use_Of_Void(context);
@@ -145,7 +145,7 @@ NVariableDecl::codeGen(CodeGenContext& context)
 					}
 				}
 
-				if (specifiers->is_static) {
+				if (specifiers->linkage != GlobalValue::ExternalLinkage) {
 					init_value = Constant::getNullValue(tmp_type);
 				}
 
@@ -162,8 +162,7 @@ NVariableDecl::codeGen(CodeGenContext& context)
 				}
 
 				var = new GlobalVariable(*context.module, tmp_type, false,
-										 (specifiers->is_static ? GlobalValue::InternalLinkage
-																: GlobalValue::ExternalLinkage),
+										 specifiers->linkage,
 										 init_value, context.formatName(decl_info_tmp->id->name)); 
 				context.getGlobals()[context.formatName(decl_info_tmp->id->name)] = var;
 			}
@@ -401,8 +400,7 @@ NFunctionDecl::codeGen(CodeGenContext& context)
 
 	if (!(function = context.module->getFunction(context.formatName(main_decl_info->id->name)))) {
 		function = Function::Create(ftype,
-									(specifiers->is_static ? GlobalValue::InternalLinkage
-														   : GlobalValue::ExternalLinkage),
+									specifiers->linkage,
 									context.formatName(main_decl_info->id->name), context.module);
 	} else {
 		for (param_type_it = arg_types.begin(), arg_it = function->arg_begin();
