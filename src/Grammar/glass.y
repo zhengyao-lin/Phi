@@ -747,7 +747,9 @@ unary_op
 	| TLNOT
 	| TINC
 	| TDEC
+	| TDCOLON
 	;
+
 unary_expression
 	: postfix_expression
 	| unary_op unary_expression

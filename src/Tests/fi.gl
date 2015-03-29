@@ -15,6 +15,12 @@ int fi(int n, int m)
 
 static int ip = 0;
 
+int print_where()
+{
+	printf("in global!\n");
+	return 0;
+}
+
 namespace sd {
 	namespace subtype {
 		typedef struct occ { double ppp; } occt;
@@ -22,20 +28,46 @@ namespace sd {
 			int i;
 		};
 	}
+
 	static char nsp_array[10];
+	int print_where();
+
 	int env2(int i)
 	{
 		subtype::occt obj;
 		printf("%f\n", obj.ppp = 10);
 
+		::print_where();
+
 		return 0;
 	}
+
+	int print_where()
+	{
+		printf("in namespace!\n");
+		return 0;
+	}
+}
+
+int:64 strlen_o(char *str)
+{
+	int:64 ret;
+
+	FOR_S:
+		ret = 0;
+	FOR_COND:
+		if (*str != '\0')
+		{ str++; ret++; goto FOR_COND; }
+
+	return ret;
 }
 
 int main(void)
 {
 	//typedef struct occ { int iii; } occt;
 	struct sd::subtype::incomp oo;
+
+	sd::env2();
 
 	sd::subtype::occt obj;
 	printf("%d\n", sd::nsp_array[9] = 1000);
@@ -95,6 +127,14 @@ int main(void)
 		void* y = &*x;
 	}
 
+	{
+		char *i = "hello, world";
+		*i++ = 'b';
+		*i++ = 'o';
+		*i = 'b';
+		i = i - 2;
+		printf("%d, %c, %c, %c, %c\n", strlen_o(i), *i++, *i++, *i++, *i);
+	}
 
 	return 0;
 }

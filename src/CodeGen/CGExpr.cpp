@@ -285,6 +285,14 @@ NPrefixExpr::codeGen(CodeGenContext& context)
 	Type *val_type;
 	Type *type_expr_operand;
 
+	if (op == TDCOLON) {
+		string backup = context.current_namespace;
+		context.current_namespace = "";
+		val_tmp = operand.codeGen(context);
+		context.current_namespace = backup;
+		return val_tmp;
+	}
+
 	val_tmp = operand.codeGen(context);
 	type_expr_operand = type.getType(context);
 
