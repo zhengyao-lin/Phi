@@ -1,3 +1,6 @@
+#ifndef _CGERR_H_
+#define _CGERR_H_
+
 #include "ErrorMsg/EMCore.h"
 #include "CGAST.h"
 
@@ -342,3 +345,5 @@ CGERR_Invalid_Use_Of_Void(CodeGenContext& context)
 											  "Invalid use of incompelete type void"));
 	return;
 }
+
+#endif

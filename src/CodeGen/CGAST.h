@@ -303,4 +303,6 @@ public:
     }
 };
 
+#include "CGContainer.h"
+
 #endif

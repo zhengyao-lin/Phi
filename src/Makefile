@@ -2,7 +2,6 @@ TARGET = testbed
 OBJS = Grammar/Grammar.o \
 	   CodeGen/CodeGen.o \
 	   ErrorMsg/ErrorMsg.o \
-	   llc.o \
 	   main.o
 
 LLVMCONFIG = llvm-config
@@ -14,6 +13,10 @@ all: $(TARGET)
 
 $(TARGET): $(OBJS)
 	g++ -o $@ $(OBJS) $(LIBS) $(LDFLAGS)
+
+testval:
+	g++ -c $(CPPFLAGS) test.cpp -o testval.o
+	g++ testval.o -o testval $(LIBS) $(LDFLAGS)
 
 #default
 %.o: %.cpp

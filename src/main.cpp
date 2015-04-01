@@ -6,9 +6,16 @@
 #include "AST/Node.h"
 #include "AST/Parser.h"
 #include "ErrorMsg/EMCore.h"
-#include "llvm/Support/ManagedStatic.h"
-#include "llvm/Support/FileSystem.h"
-#include "llvm/Support/raw_ostream.h"
+#include <llvm/Support/ManagedStatic.h>
+#include <llvm/Support/FileSystem.h>
+#include <llvm/Support/raw_ostream.h>
+#include <llvm/Target/TargetMachine.h>
+#include <llvm/Support/TargetSelect.h>
+#include <llvm/Support/ToolOutputFile.h>
+#include <llvm/Support/FormattedStream.h>
+#include <llvm/Support/Host.h>
+#include <llvm/Support/TargetRegistry.h>
+#include <llvm/Support/CommandLine.h>
 
 using namespace std;
 
@@ -18,19 +25,19 @@ Parser *main_parser = NULL;
 class IOSetting
 {
 	bool target_asm = false;
-	bool just_compile = false;
+	bool target_object = false;
 	string input_file = "";
 	string object_file = "";
 
 public:
 	#define ARG_OBJECT ("-o")
-	#define ARG_JUST_COMPILE ("-c")
+	#define ARG_TARGET_OBJECT ("-c")
 	#define ARG_TARGET_ASM ("-S")
 
 	enum ArgumentType {
 		Unknown = 0,
 		ObjectFile,
-		JustCompile,
+		TargetObj,
 		TargetASM,
 	};
 	std::map<std::string, ArgumentType> ARG_MAP;
@@ -38,7 +45,7 @@ public:
 	void initMap()
 	{
 		ARG_MAP[ARG_OBJECT] = ObjectFile;
-		ARG_MAP[ARG_JUST_COMPILE] = JustCompile;
+		ARG_MAP[ARG_TARGET_OBJECT] = TargetObj;
 		ARG_MAP[ARG_TARGET_ASM] = TargetASM;
 		return;
 	}
@@ -54,8 +61,8 @@ public:
 					object_file = argv[i + 1];
 					i++;
 					break;
-				case JustCompile:
-					just_compile = true;
+				case TargetObj:
+					target_object = true;
 					break;
 				case TargetASM:
 					target_asm = true;
@@ -108,14 +115,102 @@ public:
 		return object_file;
 	}
 
-	bool justCompile()
+	bool targetObj()
 	{
-		return just_compile;
+		return target_object;
 	}
 
 	bool targetASM()
 	{
 		return target_asm;
+	}
+
+	bool isIROutput()
+	{
+		return !targetObj() && !targetASM();
+	}
+
+	string getFileName(string file)
+	{
+		int i;
+		for (i = file.length() - 1; i >= 0; i--) {
+			if (file[i] == '.') {
+				break;
+			}
+		}
+		return file.substr(0, i);
+	}
+
+	void doOutput(Module *mod)
+	{
+		TargetMachine::CodeGenFileType output_file_type = TargetMachine::CGFT_Null;
+
+		if (targetObj()) {
+			output_file_type = TargetMachine::CGFT_ObjectFile;
+		} else {
+			output_file_type = TargetMachine::CGFT_AssemblyFile;
+		}
+
+		if (isIROutput()) {
+			if (getObject().empty()) {
+				if (input_file.empty()) {
+					object_file = "tmp.ll";
+				} else {
+					object_file = getFileName(string(basename(input_file.c_str()))) + ".ll";
+				}
+			}
+
+			string error_msg;
+			tool_output_file output_file(getObject().c_str(), error_msg, sys::fs::F_None);
+			if (!error_msg.empty()) {
+				cerr << error_msg << endl;
+				return;
+			}
+			output_file.os() << *mod;
+			output_file.keep();
+		} else {
+			string error_str;
+			const Target *target = TargetRegistry::lookupTarget(
+									sys::getDefaultTargetTriple(), error_str);
+			if (target == NULL) {
+				cout << error_str << endl;
+				return;
+			}
+			TargetOptions target_options;
+			TargetMachine *target_machine = target->createTargetMachine(
+										   sys::getDefaultTargetTriple(),
+										   sys::getHostCPUName(), "",
+										   target_options);
+
+			if (object_file.empty()) {
+				if (input_file.empty()) {
+					if (targetObj()) {
+						object_file = "tmp.o";
+					} else {
+						object_file = "tmp.s";
+					}
+				} else {
+					if (targetObj()) {
+						object_file = getFileName(string(basename(input_file.c_str()))) + ".o";
+					} else {
+						object_file = getFileName(string(basename(input_file.c_str()))) + ".s";
+					}
+				}
+			}
+
+			string error_str2;
+			tool_output_file ouput_tool(object_file.c_str(), error_str2, sys::fs::F_Excl);
+			if (!error_str2.empty()) {
+				cout << error_str2 << endl;
+				return;
+			}
+			PassManager pass_m;
+			//passManager.add(dataLayout);
+			formatted_raw_ostream fos(ouput_tool.os());
+			target_machine->addPassesToEmitFile(pass_m, fos, output_file_type);
+			pass_m.run(*mod);
+			ouput_tool.keep();
+		}
 	}
 };
 
@@ -126,6 +221,7 @@ CodeGenContext *global_context;
 int main(int argc, char **argv)
 {
 	PassManager pm;
+	TargetMachine::CodeGenFileType output_file_type;
 
 	global_context = new CodeGenContext();
 	main_parser = new Parser();
@@ -135,28 +231,19 @@ int main(int argc, char **argv)
 	main_parser->startParse(yyin);
 
 	InitializeNativeTarget();
+	InitializeAllTargets();
+	InitializeAllTargetMCs();
+	InitializeAllAsmPrinters();
+	InitializeAllAsmParsers();
 
 	main_parser->generateAllDecl(*global_context);
 	global_context->generateCode(*main_parser->getAST());
 	delete main_parser;
 
-	if (settings->hasObject()) {
-		raw_fd_ostream rfo(settings->getObject().c_str(),
-						   *new string(""), sys::fs::F_RW);
-		pm.add(createPrintModulePass(rfo));
-		pm.run(*global_context->module);
-		rfo.close();
-	}
+	settings->doOutput(global_context->module);
 
-	if (!settings->justCompile()) {
-		global_context->module->dump();
-		global_context->runCode();
-	}
-
-	if (settings->targetASM() && settings->hasObject()) {
-		char *llc_argv[] = { "llc", strdup(settings->getObject().c_str()) };
-		llc_main(2, llc_argv);
-	}
+	global_context->module->dump();
+	global_context->runCode();
 
 	llvm_shutdown();
 	delete global_context;

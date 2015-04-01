@@ -130,6 +130,9 @@ NVariableDecl::codeGen(CodeGenContext& context)
 			tmp_type = decl_info_tmp->type;
 
 			if (isFunctionType(tmp_type)) {
+				if (specifiers->linkage == GlobalValue::CommonLinkage) {
+					specifiers->linkage = GlobalValue::ExternalLinkage;
+				}
 				Function::Create(dyn_cast<FunctionType>(tmp_type),
 								 specifiers->linkage,
 								 context.formatName(decl_info_tmp->id->name), context.module);
@@ -398,9 +401,11 @@ NFunctionDecl::codeGen(CodeGenContext& context)
 	ret_type = dyn_cast<FunctionType>(main_decl_info->type)->getReturnType();
 	ftype = dyn_cast<FunctionType>(main_decl_info->type);
 
+	if (specifiers->linkage == GlobalValue::CommonLinkage) {
+		specifiers->linkage = GlobalValue::ExternalLinkage;
+	}
 	if (!(function = context.module->getFunction(context.formatName(main_decl_info->id->name)))) {
-		function = Function::Create(ftype,
-									specifiers->linkage,
+		function = Function::Create(ftype, specifiers->linkage,
 									context.formatName(main_decl_info->id->name), context.module);
 	} else {
 		for (param_type_it = arg_types.begin(), arg_it = function->arg_begin();

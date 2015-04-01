@@ -67,7 +67,7 @@ int main(void)
 	//typedef struct occ { int iii; } occt;
 	struct sd::subtype::incomp oo;
 
-	sd::env2();
+	sd::env2(10);
 
 	sd::subtype::occt obj;
 	printf("%d\n", sd::nsp_array[9] = 1000);
@@ -134,6 +134,8 @@ int main(void)
 		*i = 'b';
 		i = i - 2;
 		printf("%d, %c, %c, %c, %c\n", strlen_o(i), *i++, *i++, *i++, *i);
+		int i = 10;
+		int a = i = 20;
 	}
 
 	return 0;

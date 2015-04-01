@@ -8,7 +8,8 @@ OBJS = \
 	CGJIT.o \
 	CGSpecifier.o \
 	CGStmt.o \
-	CGDeclarator.o
+	CGDeclarator.o \
+	CGContainer.o
 
 LLVMCONFIG = llvm-config
 CPPFLAGS = `$(LLVMCONFIG) --cppflags` -std=c++11 -c -g -Wall -pedantic
