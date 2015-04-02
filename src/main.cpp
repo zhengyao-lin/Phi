@@ -25,6 +25,7 @@ Parser *main_parser = NULL;
 class IOSetting
 {
 	bool target_asm = false;
+	bool target_ir = false;
 	bool target_object = false;
 	string input_file = "";
 	string object_file = "";
@@ -32,13 +33,15 @@ class IOSetting
 public:
 	#define ARG_OBJECT ("-o")
 	#define ARG_TARGET_OBJECT ("-c")
-	#define ARG_TARGET_ASM ("-S")
+	#define ARG_TARGET_ASM ("-s")
+	#define ARG_TARGET_IR ("-S")
 
 	enum ArgumentType {
 		Unknown = 0,
 		ObjectFile,
 		TargetObj,
 		TargetASM,
+		TargetIR
 	};
 	std::map<std::string, ArgumentType> ARG_MAP;
 
@@ -47,6 +50,7 @@ public:
 		ARG_MAP[ARG_OBJECT] = ObjectFile;
 		ARG_MAP[ARG_TARGET_OBJECT] = TargetObj;
 		ARG_MAP[ARG_TARGET_ASM] = TargetASM;
+		ARG_MAP[ARG_TARGET_IR] = TargetIR;
 		return;
 	}
 
@@ -66,6 +70,9 @@ public:
 					break;
 				case TargetASM:
 					target_asm = true;
+					break;
+				case TargetIR:
+					target_ir = true;
 					break;
 				default: // input file
 					input_file = argv[i];
@@ -125,9 +132,14 @@ public:
 		return target_asm;
 	}
 
+	bool targetIR()
+	{
+		return target_ir;
+	}
+
 	bool isIROutput()
 	{
-		return !targetObj() && !targetASM();
+		return !targetObj() && !targetASM() && targetIR();
 	}
 
 	string getFileName(string file)
@@ -147,7 +159,7 @@ public:
 
 		if (targetObj()) {
 			output_file_type = TargetMachine::CGFT_ObjectFile;
-		} else {
+		} else if (targetASM()) {
 			output_file_type = TargetMachine::CGFT_AssemblyFile;
 		}
 
@@ -168,7 +180,7 @@ public:
 			}
 			output_file.os() << *mod;
 			output_file.keep();
-		} else {
+		} else if (targetObj() || targetASM()) {
 			string error_str;
 			const Target *target = TargetRegistry::lookupTarget(
 									sys::getDefaultTargetTriple(), error_str);
