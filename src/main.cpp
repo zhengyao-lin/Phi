@@ -27,6 +27,7 @@ class IOSetting
 	bool target_asm = false;
 	bool target_ir = false;
 	bool target_object = false;
+	bool target_exe = false;
 	string input_file = "";
 	string object_file = "";
 
@@ -35,13 +36,15 @@ public:
 	#define ARG_TARGET_OBJECT ("-c")
 	#define ARG_TARGET_ASM ("-s")
 	#define ARG_TARGET_IR ("-S")
+	#define ARG_TARGET_EXE ("-e")
 
 	enum ArgumentType {
 		Unknown = 0,
 		ObjectFile,
 		TargetObj,
 		TargetASM,
-		TargetIR
+		TargetIR,
+		TargetExe
 	};
 	std::map<std::string, ArgumentType> ARG_MAP;
 
@@ -51,6 +54,7 @@ public:
 		ARG_MAP[ARG_TARGET_OBJECT] = TargetObj;
 		ARG_MAP[ARG_TARGET_ASM] = TargetASM;
 		ARG_MAP[ARG_TARGET_IR] = TargetIR;
+		ARG_MAP[ARG_TARGET_EXE] = TargetExe;
 		return;
 	}
 
@@ -73,6 +77,9 @@ public:
 					break;
 				case TargetIR:
 					target_ir = true;
+					break;
+				case TargetExe:
+					target_exe = true;
 					break;
 				default: // input file
 					input_file = argv[i];
@@ -137,9 +144,14 @@ public:
 		return target_ir;
 	}
 
+	bool targetExe()
+	{
+		return target_exe;
+	}
+
 	bool isIROutput()
 	{
-		return !targetObj() && !targetASM() && targetIR();
+		return !targetObj() && !targetASM() && !targetExe() && targetIR();
 	}
 
 	string getFileName(string file)
@@ -156,8 +168,9 @@ public:
 	void doOutput(Module *mod)
 	{
 		TargetMachine::CodeGenFileType output_file_type = TargetMachine::CGFT_Null;
+		string tmp_output_name = getObject();
 
-		if (targetObj()) {
+		if (targetObj() || targetExe()) {
 			output_file_type = TargetMachine::CGFT_ObjectFile;
 		} else if (targetASM()) {
 			output_file_type = TargetMachine::CGFT_AssemblyFile;
@@ -166,9 +179,9 @@ public:
 		if (isIROutput()) {
 			if (getObject().empty()) {
 				if (input_file.empty()) {
-					object_file = "tmp.ll";
+					tmp_output_name = "tmp.ll";
 				} else {
-					object_file = getFileName(string(basename(input_file.c_str()))) + ".ll";
+					tmp_output_name = getFileName(string(basename(input_file.c_str()))) + ".ll";
 				}
 			}
 
@@ -180,7 +193,7 @@ public:
 			}
 			output_file.os() << *mod;
 			output_file.keep();
-		} else if (targetObj() || targetASM()) {
+		} else if (targetObj() || targetASM() || targetExe()) {
 			string error_str;
 			const Target *target = TargetRegistry::lookupTarget(
 									sys::getDefaultTargetTriple(), error_str);
@@ -194,24 +207,26 @@ public:
 										   sys::getHostCPUName(), "",
 										   target_options);
 
-			if (object_file.empty()) {
+			if (getObject().empty()) {
 				if (input_file.empty()) {
-					if (targetObj()) {
-						object_file = "tmp.o";
+					if (targetObj() || targetExe()) {
+						tmp_output_name = "tmp.o";
 					} else {
-						object_file = "tmp.s";
+						tmp_output_name = "tmp.s";
 					}
 				} else {
-					if (targetObj()) {
-						object_file = getFileName(string(basename(input_file.c_str()))) + ".o";
+					if (targetObj() || targetExe()) {
+						tmp_output_name = getFileName(string(basename(input_file.c_str()))) + ".o";
 					} else {
-						object_file = getFileName(string(basename(input_file.c_str()))) + ".s";
+						tmp_output_name = getFileName(string(basename(input_file.c_str()))) + ".s";
 					}
 				}
+			} else if (targetExe()) {
+				tmp_output_name += ".tmp";
 			}
 
 			string error_str2;
-			tool_output_file ouput_tool(object_file.c_str(), error_str2, sys::fs::F_Excl);
+			tool_output_file ouput_tool(tmp_output_name.c_str(), error_str2, sys::fs::F_Excl);
 			if (!error_str2.empty()) {
 				cout << error_str2 << endl;
 				return;
@@ -222,6 +237,19 @@ public:
 			target_machine->addPassesToEmitFile(pass_m, fos, output_file_type);
 			pass_m.run(*mod);
 			ouput_tool.keep();
+		}
+
+		if (targetExe()) {
+			cout << getObject() << endl;
+			string cmd = "gcc " + tmp_output_name + " -o "
+						 + (getObject().empty()
+							? "a.out"
+							: getObject());
+			int status = system(cmd.c_str());
+			if (status) {
+				exit(1);
+			}
+			system(("rm -rf " + tmp_output_name).c_str());
 		}
 	}
 };
