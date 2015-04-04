@@ -42,6 +42,46 @@ NReturnStatement::codeGen(CodeGenContext& context)
 }
 
 CGValue
+NWhileStatement::codeGen(CodeGenContext& context)
+{
+	BasicBlock *orig_end_block;
+	BasicBlock *orig_block;
+	BasicBlock *cond_block;
+	BasicBlock *while_true_block;
+	BasicBlock *end_block;
+	Value *cond;
+
+	orig_block = context.currentBlock();
+	orig_end_block = context.current_end_block;
+
+	cond_block = BasicBlock::Create(getGlobalContext(), "", orig_block->getParent(),
+									orig_end_block);
+	BranchInst::Create(cond_block, orig_block); // auto jump to cond block
+	setBlock(cond_block);
+	orig_block = cond_block;
+
+	cond = context.builder->CreateIsNotNull(condition.codeGen(context), "");
+
+	end_block = BasicBlock::Create(getGlobalContext(), "", orig_block->getParent(),
+								   orig_end_block);
+	context.current_end_block = end_block;
+
+	while_true_block = BasicBlock::Create(getGlobalContext(), "", orig_block->getParent(),
+										  context.current_end_block);
+
+	setBlock(while_true_block);
+	while_true->codeGen(context);
+	context.builder->CreateBr(cond_block); // rejudge
+
+	context.popBlock();
+
+	context.current_end_block = orig_end_block; // restore info
+	setBlock(end_block); // insert other insts at end block
+
+	return CGValue(BranchInst::Create(while_true_block, end_block, cond, cond_block));
+}
+
+CGValue
 NIfStatement::codeGen(CodeGenContext& context)
 {
 	BasicBlock *orig_end_block;
@@ -60,9 +100,6 @@ NIfStatement::codeGen(CodeGenContext& context)
 	// create & set end block
 	end_block = BasicBlock::Create(getGlobalContext(), "", orig_block->getParent(),
 								   orig_end_block);
-	if (orig_end_block) {
-		BranchInst::Create(orig_end_block, end_block); // goto next end
-	}
 	context.current_end_block = end_block;
 
 	if_true_block = BasicBlock::Create(getGlobalContext(), "", orig_block->getParent(),

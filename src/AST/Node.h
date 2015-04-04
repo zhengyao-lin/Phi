@@ -5,8 +5,8 @@
 #include <vector>
 #include <llvm/IR/Value.h>
 #include <llvm/IR/GlobalValue.h>
+#include "../CodeGen/CGContainer.h"
 
-class CGValue;
 class CodeGenContext;
 class NStatement;
 class NExpression;
@@ -410,15 +410,20 @@ class NBinaryExpr : public NExpression {
 public:
 	int lineno = -1;
 	int op;
+	bool do_not_delete_lval = false;
 	NExpression& lval;
 	NExpression& rval;
 
 	NBinaryExpr(NExpression& lval, int op, NExpression& rval) :
 	lval(lval), rval(rval), op(op) { }
 
+	NBinaryExpr(NExpression& lval, int op, NExpression& rval, bool do_not_delete_lval) :
+	lval(lval), rval(rval), op(op), do_not_delete_lval(do_not_delete_lval) { }
+
 	virtual ~NBinaryExpr()
 	{
-		delete &lval;
+		if (!do_not_delete_lval)
+			delete &lval;
 		delete &rval;
 	}
 
@@ -537,6 +542,24 @@ public:
 		delete &condition;
 		delete if_true;
 		delete if_else;
+	}
+
+	virtual CGValue codeGen(CodeGenContext& context);
+};
+
+class NWhileStatement : public NStatement {
+public:
+	int lineno = -1;
+	NExpression& condition;
+	NStatement *while_true;
+
+	NWhileStatement(NExpression& condition, NStatement *while_true) :
+	condition(condition), while_true(while_true) { }
+
+	virtual ~NWhileStatement()
+	{
+		delete &condition;
+		delete while_true;
 	}
 
 	virtual CGValue codeGen(CodeGenContext& context);

@@ -19,6 +19,11 @@ getConstantInt(Value *C)
 {
 	return *((ConstantInt *)C)->getValue().getRawData();
 }
+inline string
+getConstantIntStr(Value *C)
+{
+	return ((ConstantInt *)C)->getValue().toString(10, true);
+}
 inline bool
 isConstantFP(Value *V)
 {
@@ -160,7 +165,7 @@ getBitWidth(Type *T)
 inline bool
 isSameType(Type *T1, Type *T2)
 {
-	if (T1->getTypeID() == T2->getTypeID()) {
+	/*if (T1->getTypeID() == T2->getTypeID()) {
 		if (T1->getTypeID() == Type::IntegerTyID) {
 			if (T1->getIntegerBitWidth() == T2->getIntegerBitWidth()) {
 				return true;
@@ -174,9 +179,9 @@ isSameType(Type *T1, Type *T2)
 		} else {
 			return true;
 		}
-	}
+	}*/
 
-	return false;
+	return T1 == T2;
 }
 inline bool
 hasSameType(Value *V1, Value *V2)

@@ -33,7 +33,7 @@ ArrayDeclarator::getDeclInfo(CodeGenContext& context, llvm::Type *base_type)
 				elem_type = ArrayType::get(elem_type, tmp_const->getZExtValue());
 			} else {
 				CGERR_Non_Constant_Array_Size(context);
-				CGERR_setLineNum(context, lineno);
+				CGERR_setLineNum(context, dyn_cast<Declarator>(this)->lineno);
 				CGERR_showAllMsg(context);
 				return NULL;
 			}

@@ -15,11 +15,12 @@ NInteger::codeGen(CodeGenContext& context)
 													: 10);
 	string str = value.substr(radix == 16 ? 2 : (radix == 8 ? 1 : 0 ));
 	unsigned bits = APInt::getBitsNeeded(str, radix);
-	bits = (bits < 64 ? 64 : bits);
-	APInt apint(bits, str, radix);
+	bits = bits > 64 ? (bits / 64 + 1) * 64 : 64;
 
-	return CGValue(Constant::getIntegerValue(Type::getIntNTy(getGlobalContext(), bits),
-											  apint));
+	ConstantInt *ret = ConstantInt::get(Type::getIntNTy(getGlobalContext(), bits),
+										StringRef(str), radix);
+
+	return CGValue(ret);
 }
 
 CGValue

@@ -35,6 +35,7 @@ extern std::map<std::string, int> type_def;
 <INITIAL>"namespace"						return TOKEN(TNAMESPACE);
 <INITIAL>"if"								return TOKEN(TIF);
 <INITIAL>"else"							return TOKEN(TELSE);
+<INITIAL>"while"							return TOKEN(TWHILE);
 <INITIAL>"true"							return TOKEN(TTRUE);
 <INITIAL>"false"							return TOKEN(TFALSE);
 <INITIAL>"sizeof"							return TOKEN(TSIZEOF);
@@ -51,6 +52,16 @@ extern std::map<std::string, int> type_def;
 
  /* Assignment */
 <INITIAL>"="								return TOKEN(TASSIGN);
+<INITIAL>"+="								return TOKEN(TAADD);
+<INITIAL>"-="								return TOKEN(TASUB);
+<INITIAL>"*="								return TOKEN(TAMUL);
+<INITIAL>"/="								return TOKEN(TADIV);
+<INITIAL>"%="								return TOKEN(TAMOD);
+<INITIAL>"<<="								return TOKEN(TASHL);
+<INITIAL>">>="								return TOKEN(TASHR);
+<INITIAL>"&="								return TOKEN(TAAND);
+<INITIAL>"^="								return TOKEN(TAXOR);
+<INITIAL>"|="								return TOKEN(TAOR);
 
  /* Condition */
 <INITIAL>"=="								return TOKEN(TCEQ);
@@ -196,6 +207,7 @@ extern std::map<std::string, int> type_def;
     LINE_NUMBER_INC();
 }
 <STRING_LITERAL_STATE>\\\"      *string_literal += '"';
+<STRING_LITERAL_STATE>\\'       *string_literal += '\'';
 <STRING_LITERAL_STATE>\\n       *string_literal += '\n';
 <STRING_LITERAL_STATE>\\t       *string_literal += '\t';
 <STRING_LITERAL_STATE>\\\\      *string_literal += '\\';

@@ -117,9 +117,6 @@ NMethodCall::codeGen(CodeGenContext& context)
 		 expr_it != arguments.end(); expr_it++, arg_it++) {
 		arg_type = (arg_it < ftype->param_end() ? ftype->getParamType(arg_it - ftype->param_begin())
 												: NULL);
-		if (arg_type && arg_type->isIntegerTy()) {
-			context.current_bit_width = dyn_cast<IntegerType>(arg_type)->getIntegerBitWidth();
-		}
 
 		tmp = (**expr_it).codeGen(context);
 		context.current_bit_width = 0;
@@ -560,7 +557,7 @@ NAssignmentExpr::doAssignCast(CodeGenContext& context, Value *value,
 		if ((value_type->isFloatingPointTy() && variable_type->isFloatingPointTy())
 			|| (value_type->isIntegerTy() && variable_type->isIntegerTy())) {
 			if (isConstantInt(value)) {
-				return ConstantInt::get(variable_type, getConstantInt(value), true);
+				return context.builder->CreateIntCast(value, variable_type, true);
 			} else if (isConstantFP(value)) {
 				return ConstantFP::get(variable_type, getConstantDouble(value));
 			} else {

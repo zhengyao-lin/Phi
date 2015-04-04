@@ -186,9 +186,10 @@ public:
 			}
 
 			string error_msg;
-			tool_output_file output_file(getObject().c_str(), error_msg, sys::fs::F_None);
+			tool_output_file output_file(tmp_output_name.c_str(), error_msg, sys::fs::F_None);
 			if (!error_msg.empty()) {
 				cerr << error_msg << endl;
+				exit(1);
 				return;
 			}
 			output_file.os() << *mod;
@@ -199,6 +200,7 @@ public:
 									sys::getDefaultTargetTriple(), error_str);
 			if (target == NULL) {
 				cout << error_str << endl;
+				exit(1);
 				return;
 			}
 			TargetOptions target_options;

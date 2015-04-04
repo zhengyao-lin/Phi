@@ -25,6 +25,7 @@
 		ASTERR_setLineNumber();
 		ASTERR_showAllMsgAndExit1();
 	}
+	int getAssignToBinary(int token);
 %}
 
 %union {
@@ -56,9 +57,10 @@
 %token <token> TLPAREN TRPAREN TLBRACE TRBRACE
 				TAND TNOT TSIZEOF TALIGNOF TTYPEOF TARROW
 			    TELLIPSIS TCOLON TSEMICOLON TCOMMA TDOT
-				TLBRAKT TRBRAKT TLAND TLOR TOR TXOR TIF TELSE
+				TLBRAKT TRBRAKT TLAND TLOR TOR TXOR TIF TELSE TWHILE
 				TLNOT TNAMESPACE TDCOLON TINC TDEC
 %token <token> TADD TSUB TMUL TDIV TMOD TSHR TSHL
+				TAADD TASUB TAMUL TADIV TAMOD TASHR TASHL TAAND TAOR TAXOR
 %token <token> TRETURN TEXTERN TDELEGATE TSTRUCT TSTATIC
 				TTYPEDEF TUNION TGOTO
 
@@ -72,7 +74,7 @@
 					exclusive_or_expression and_expression equality_expression
 					relational_expression
 
-%type <type> type_specifier identifier_type bitfield_type struct_type union_type
+%type <type> type_specifier identifier_type bitfield_type struct_type union_type ex_type_specifier
 %type <variable_list> fields_declaration
 %type <param_list> function_arguments
 %type <expression_list> expression_list
@@ -88,8 +90,8 @@
 				   struct_declaration union_declaration typedef_declaration
 				   selection_statement labeled_statement jump_statement
 				   namespace_declaration in_namespace_declaration
-				   expression_statement
-%type <token> assign_op unary_op
+				   expression_statement iteration_statement
+%type <token> assign_op unary_op self_assign_op
 %type <dim>	ptr_dim
 
 %start compile_unit
@@ -541,11 +543,25 @@ statement
 		SETLINE($$);
 	}
 	| selection_statement
+	| iteration_statement
 	| labeled_statement
 	;
 
+iteration_statement
+	: TWHILE TLPAREN expression TRPAREN statement
+	{
+		$$ = new NWhileStatement(*$3, $5);
+		SETLINE($$);
+	}
+	;
+
 expression_statement
-	: expression TSEMICOLON
+	: TSEMICOLON
+	{
+		$$ = new NVoid();
+		SETLINE($$);
+	}
+	| expression TSEMICOLON
 	{
 		$$ = $<statement>1;
 		SETLINE($$);
@@ -745,6 +761,15 @@ unary_op
 	| TDCOLON
 	;
 
+ex_type_specifier
+	: type_specifier
+	| type_specifier ptr_dim
+	{
+		$$ = new NDerivedType(*$1, $2);
+		SETLINE($$);
+	}
+	;
+
 unary_expression
 	: postfix_expression
 	| unary_op unary_expression
@@ -752,12 +777,12 @@ unary_expression
 		$$ = new NPrefixExpr($1, *$2);
 		SETLINE($$);
 	}
-	| TSIZEOF TLPAREN type_specifier TRPAREN
+	| TSIZEOF TLPAREN ex_type_specifier TRPAREN
 	{
 		$$ = new NPrefixExpr($1, *$3);
 		SETLINE($$);
 	}
-	| TALIGNOF TLPAREN type_specifier TRPAREN
+	| TALIGNOF TLPAREN ex_type_specifier TRPAREN
 	{
 		$$ = new NPrefixExpr($1, *$3);
 		SETLINE($$);
@@ -911,11 +936,30 @@ conditional_expression
 assign_op
 	: TASSIGN
 	;
+
+self_assign_op
+	: TAADD
+	| TASUB
+	| TAMUL
+	| TADIV
+	| TAMOD
+	| TASHR
+	| TASHL
+	| TAAND
+	| TAOR
+	| TAXOR
+	;
+
 assignment_expression
 	: conditional_expression
 	| unary_expression assign_op assignment_expression
 	{
 		$$ = new NAssignmentExpr(*$1, *$3);
+		SETLINE($$);
+	}
+	| unary_expression self_assign_op assignment_expression
+	{
+		$$ = new NAssignmentExpr(*$1, *new NBinaryExpr(*$1, getAssignToBinary($2), *$3, true));
 		SETLINE($$);
 	}
 	;
@@ -936,3 +980,30 @@ expression_list
 	}
 	;
 %%
+int getAssignToBinary(int token)
+{
+	switch(token) {
+		case TAADD:
+			return TAND;
+		case TASUB:
+			return TSUB;
+		case TAMUL:
+			return TMUL;
+		case TADIV:
+			return TDIV;
+		case TAMOD:
+			return TMOD;
+		case TASHR:
+			return TSHR;
+		case TASHL:
+			return TSHL;
+		case TAAND:
+			return TAND;
+		case TAOR:
+			return TOR;
+		case TAXOR:
+			return TXOR;
+	}
+
+	return -1;
+}
