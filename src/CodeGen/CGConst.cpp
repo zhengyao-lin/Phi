@@ -6,7 +6,7 @@
 #include <sstream>
 #include <string.h>
 
-Value*
+CGValue
 NInteger::codeGen(CodeGenContext& context)
 {
 	unsigned radix = (value.c_str()[0] == '0'
@@ -18,39 +18,39 @@ NInteger::codeGen(CodeGenContext& context)
 	bits = (bits < 64 ? 64 : bits);
 	APInt apint(bits, str, radix);
 
-	return Constant::getIntegerValue(Type::getIntNTy(getGlobalContext(), bits),
-									  apint);
+	return CGValue(Constant::getIntegerValue(Type::getIntNTy(getGlobalContext(), bits),
+											  apint));
 }
 
-Value*
+CGValue
 NChar::codeGen(CodeGenContext& context)
 {
-	return context.builder->getInt8(value);
+	return CGValue(context.builder->getInt8(value));
 }
 
-Value*
+CGValue
 NBoolean::codeGen(CodeGenContext& context)
 {
-	return context.builder->getInt1(value);
+	return CGValue(context.builder->getInt1(value));
 }
 
-Value*
+CGValue
 NDouble::codeGen(CodeGenContext& context)
 {
-	return ConstantFP::get(Type::getDoubleTy(getGlobalContext()),
-							value);
+	return CGValue(ConstantFP::get(Type::getDoubleTy(getGlobalContext()),
+									value));
 }
 
-Value*
+CGValue
 NString::codeGen(CodeGenContext& context)
 {
 	if (context.currentBlock()) {
-		return new GlobalVariable(*context.module,
+		return CGValue(new GlobalVariable(*context.module,
 								   llvm::ArrayType::get(Type::getInt8Ty(getGlobalContext()), strlen(value.c_str()) + 1),
 								   true, GlobalValue::PrivateLinkage, 
 								   ConstantDataArray::getString(getGlobalContext(), value.c_str()),
-								   ".str");
+								   ".str"));
 	}
 
-	return ConstantDataArray::getString(getGlobalContext(), value.c_str());
+	return CGValue(ConstantDataArray::getString(getGlobalContext(), value.c_str()));
 }

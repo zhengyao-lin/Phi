@@ -7,7 +7,7 @@
 #define setBlock(b) (context.pushBlock(b), \
 					 context.builder->SetInsertPoint(context.currentBlock()))
 
-Value *
+CGValue
 NBlock::codeGen(CodeGenContext& context)
 {
 	BlockLocalContext local_context = context.backupLocalContext();
@@ -21,10 +21,10 @@ NBlock::codeGen(CodeGenContext& context)
 	}
 	context.restoreLocalContext(local_context);
 
-	return last;
+	return CGValue(last);
 }
 
-Value *
+CGValue
 NReturnStatement::codeGen(CodeGenContext& context)
 {
 	Value *tmp_val = expression.codeGen(context);
@@ -35,13 +35,13 @@ NReturnStatement::codeGen(CodeGenContext& context)
 												context.currentBlock()->getParent()->getReturnType(),
 												NULL, ((NStatement*)this)->lineno);
 	} else {
-		return context.builder->CreateRetVoid();
+		return CGValue(context.builder->CreateRetVoid());
 	}
 
-	return context.builder->CreateRet(ret_val);
+	return CGValue(context.builder->CreateRet(ret_val));
 }
 
-Value *
+CGValue
 NIfStatement::codeGen(CodeGenContext& context)
 {
 	BasicBlock *orig_end_block;
@@ -88,7 +88,7 @@ NIfStatement::codeGen(CodeGenContext& context)
 		context.current_end_block = orig_end_block; // restore info
 		setBlock(end_block); // insert other insts at end block
 
-		return BranchInst::Create(if_true_block, if_else_block, cond, orig_block); // insert branch at original block
+		return CGValue(BranchInst::Create(if_true_block, if_else_block, cond, orig_block)); // insert branch at original block
 	}
 
 	// else (no if_else)
@@ -99,10 +99,10 @@ NIfStatement::codeGen(CodeGenContext& context)
 		context.builder->SetInsertPoint(end_block->getTerminator());
 	}
 
-	return BranchInst::Create(if_true_block, end_block, cond, orig_block);
+	return CGValue(BranchInst::Create(if_true_block, end_block, cond, orig_block));
 }
 
-Value *
+CGValue
 NLabelStatement::codeGen(CodeGenContext& context)
 {
 	BasicBlock *labeled_block;
@@ -125,7 +125,7 @@ NLabelStatement::codeGen(CodeGenContext& context)
 	return statement.codeGen(context);
 }
 
-Value *
+CGValue
 NGotoStatement::codeGen(CodeGenContext& context)
 {
 	BranchInst *br_inst;
@@ -142,5 +142,5 @@ NGotoStatement::codeGen(CodeGenContext& context)
 								context.currentBlock()->getParent(),
 								context.current_end_block));
 
-	return br_inst;
+	return CGValue(br_inst);
 }

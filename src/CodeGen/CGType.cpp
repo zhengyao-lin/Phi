@@ -145,7 +145,7 @@ Type *
 NStructType::getType(CodeGenContext& context)
 {
 	if (struct_decl) { // struct ID { decls... } VAR_NAME;
-		return (Type *)struct_decl->codeGen(context);
+		return (Type *)(Value *)struct_decl->codeGen(context);
 	}
 
 	/*// struct ID VAR_NAME;
@@ -164,7 +164,7 @@ Type *
 NUnionType::getType(CodeGenContext& context)
 {
 	if (union_decl) { // union ID { decls... } VAR_NAME;
-		return (Type *)union_decl->codeGen(context);
+		return (Type *)(Value *)union_decl->codeGen(context);
 	}
 
 	return NULL;

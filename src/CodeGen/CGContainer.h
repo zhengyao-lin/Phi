@@ -1,6 +1,7 @@
 #ifndef _CGCTNER_H_
 #define _CGCTNER_H_
 
+using namespace llvm;
 using namespace std;
 
 enum ValueToken {

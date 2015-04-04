@@ -78,7 +78,7 @@ setPointerType(CodeGenContext& context, Type *elem_type, int ptr_dim, int lineno
 	return elem_type;
 }
 
-Value *
+CGValue
 NVariableDecl::codeGen(CodeGenContext& context)
 {
 	llvm::GlobalVariable *var;
@@ -109,7 +109,7 @@ NVariableDecl::codeGen(CodeGenContext& context)
 				CGERR_Invalid_Use_Of_Void(context);
 				CGERR_setLineNum(context, getLine(this));
 				CGERR_showAllMsg(context);
-				return NULL;
+				return CGValue();
 			}
 
 			alloc_inst = context.builder->CreateAlloca(tmp_type, nullptr, decl_info_tmp->id->name.c_str());
@@ -144,7 +144,7 @@ NVariableDecl::codeGen(CodeGenContext& context)
 						CGERR_Invalid_Use_Of_Void(context);
 						CGERR_setLineNum(context, getLine(this));
 						CGERR_showAllMsg(context);
-						return NULL;
+						return CGValue();
 					}
 				}
 
@@ -159,7 +159,7 @@ NVariableDecl::codeGen(CodeGenContext& context)
 						CGERR_External_Variable_Is_Not_Constant(context);
 						CGERR_setLineNum(context, getLine(this));
 						CGERR_showAllMsg(context);
-						return NULL;
+						return CGValue();
 					}
 					delete decl_info_tmp->expr;
 				}
@@ -174,7 +174,7 @@ NVariableDecl::codeGen(CodeGenContext& context)
 		}
 	}
 
-	return NULL;
+	return CGValue();
 }
 
 bool
@@ -215,7 +215,7 @@ checkParam(CodeGenContext& context, int lineno, vector<Type*>& arguments, ParamL
 	return true;
 }
 
-Value*
+CGValue
 NDelegateDecl::codeGen(CodeGenContext& context)
 {
 	FunctionType *ftype;
@@ -228,10 +228,10 @@ NDelegateDecl::codeGen(CodeGenContext& context)
 
 	delete decl_info;
 
-	return NULL;
+	return CGValue();
 }
 
-Value*
+CGValue
 NStructDecl::codeGen(CodeGenContext& context)
 {
 	unsigned i;
@@ -251,7 +251,7 @@ NStructDecl::codeGen(CodeGenContext& context)
 			CGERR_Redefinition_Of_Struct(context, id.name.c_str());
 			CGERR_setLineNum(context, getLine(this));
 			CGERR_showAllMsg(context);
-			return NULL;
+			return CGValue();
 		}
 		struct_type = dyn_cast<StructType>(context.getType(real_name));
 	} else {
@@ -279,7 +279,7 @@ NStructDecl::codeGen(CodeGenContext& context)
 					CGERR_Initializer_Cannot_Be_In_Struct(context);
 					CGERR_setLineNum(context, getLine(*var_it));
 					CGERR_showAllMsg(context);
-					return NULL;
+					return CGValue();
 				}
 
 				delete decl_info_tmp;
@@ -289,10 +289,10 @@ NStructDecl::codeGen(CodeGenContext& context)
 		context.setStruct(struct_type->getStructName(), field_map);
 	}
 
-	return (Value *)struct_type;
+	return CGValue((Value *)struct_type);
 }
 
-Value*
+CGValue
 NUnionDecl::codeGen(CodeGenContext& context)
 {
 	unsigned i;
@@ -313,7 +313,7 @@ NUnionDecl::codeGen(CodeGenContext& context)
 			CGERR_Redefinition_Of_Union(context, id.name.c_str());
 			CGERR_setLineNum(context, getLine(this));
 			CGERR_showAllMsg(context);
-			return NULL;
+			return CGValue();
 		}
 		union_type = dyn_cast<StructType>(context.getType(real_name));
 	} else {
@@ -350,7 +350,7 @@ NUnionDecl::codeGen(CodeGenContext& context)
 					CGERR_Initializer_Cannot_Be_In_Union(context);
 					CGERR_setLineNum(context, getLine(*var_it));
 					CGERR_showAllMsg(context);
-					return NULL;
+					return CGValue();
 				}
 				delete decl_info_tmp;
 			}
@@ -360,10 +360,10 @@ NUnionDecl::codeGen(CodeGenContext& context)
 		context.setUnion(union_type->getStructName(), field_map);
 	}
 
-	return (Value *)union_type;
+	return CGValue((Value *)union_type);
 }
 
-Value*
+CGValue
 NTypedefDecl::codeGen(CodeGenContext& context)
 {
 	DeclInfo *decl_info = decl.getDeclInfo(context, type.getType(context));
@@ -373,10 +373,10 @@ NTypedefDecl::codeGen(CodeGenContext& context)
 
 	delete decl_info;
 
-	return NULL;
+	return CGValue();
 }
 
-Value*
+CGValue
 NFunctionDecl::codeGen(CodeGenContext& context)
 {
 	vector<Type*> arg_types;
@@ -422,7 +422,7 @@ NFunctionDecl::codeGen(CodeGenContext& context)
 			CGERR_Conflicting_Type(context, main_decl_info->id->name.c_str(), param_type_it - arg_types.begin() + 1);
 			CGERR_setLineNum(context, getLine(this));
 			CGERR_showAllMsg(context);
-			return NULL;
+			return CGValue();
 		}
 	}
 
@@ -431,14 +431,14 @@ NFunctionDecl::codeGen(CodeGenContext& context)
 			CGERR_Nesting_Function(context);
 			CGERR_setLineNum(context, getLine(this));
 			CGERR_showAllMsg(context);
-			return NULL;
+			return CGValue();
 		}
 
 		if (function->begin() != function->end()) {
 			CGERR_Redefinition_Of_Function(context, main_decl_info->id->name.c_str());
 			CGERR_setLineNum(context, getLine(this));
 			CGERR_showAllMsg(context);
-			return NULL;
+			return CGValue();
 		}
 
 		bblock = BasicBlock::Create(getGlobalContext(), "", function, 0);
@@ -498,10 +498,10 @@ NFunctionDecl::codeGen(CodeGenContext& context)
 
 	delete main_decl_info;
 
-	return function;
+	return CGValue(function);
 }
 
-Value *
+CGValue
 NNameSpace::codeGen(CodeGenContext& context)
 {
 	context.current_namespace += name + "$";
@@ -512,5 +512,5 @@ NNameSpace::codeGen(CodeGenContext& context)
 
 	context.current_namespace = context.current_namespace.substr(0, context.current_namespace.length() - (name + "$").length());
 
-	return NULL;
+	return CGValue();
 }

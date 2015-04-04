@@ -21,6 +21,7 @@
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Support/Casting.h>
 #include "../ErrorMsg/EMCore.h"
+#include "CGContainer.h"
 
 #define STRUCT_PREFIX ("struct.")
 #define UNION_PREFIX ("union.")
@@ -32,7 +33,7 @@ class CodeGenContext;
 
 typedef std::map<std::string, Type*> TypeInfoTable;
 TypeInfoTable initializeBasicType(CodeGenContext& context);
-Value *codeGenLoadValue(CodeGenContext& context, Value *V);
+CGValue codeGenLoadValue(CodeGenContext& context, Value *V);
 uint64_t getConstantIntExprJIT(Constant *const_expr);
 
 typedef std::map<std::string, unsigned> FieldMap;
@@ -302,7 +303,5 @@ public:
         return blocks.top()->returnValue;
     }
 };
-
-#include "CGContainer.h"
 
 #endif

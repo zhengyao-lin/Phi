@@ -10,8 +10,7 @@
 CGValue
 codeGen()
 {
-	CGValue val(ConstantInt::get(Type::getInt32Ty(getGlobalContext()), 1102));
-	return val;
+	return CGValue(ConstantInt::get(Type::getInt32Ty(getGlobalContext()), 1102));
 }
 
 int main(int argc, char **argv)

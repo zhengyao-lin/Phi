@@ -6,6 +6,7 @@
 #include <llvm/IR/Value.h>
 #include <llvm/IR/GlobalValue.h>
 
+class CGValue;
 class CodeGenContext;
 class NStatement;
 class NExpression;
@@ -31,7 +32,7 @@ class Node {
 public:
 	int lineno = -1;
 	virtual ~Node() {}
-	virtual llvm::Value* codeGen(CodeGenContext& context) { return NULL; }
+	virtual CGValue codeGen(CodeGenContext& context) { return CGValue(); }
 };
 class NStatement : public Node {
 public:
@@ -57,7 +58,7 @@ public:
 		delete &name;
 	}
 
-	virtual llvm::Value* codeGen(CodeGenContext& context);
+	virtual CGValue codeGen(CodeGenContext& context);
 };
 
 class DeclInfo {
@@ -269,9 +270,9 @@ public:
 class NVoid : public NExpression {
 	int lineno = -1;
 
-	virtual llvm::Value* codeGen(CodeGenContext& context)
+	virtual CGValue codeGen(CodeGenContext& context)
 	{
-		return NULL;
+		return CGValue();
 	}
 
 	virtual ~NVoid() {}
@@ -289,7 +290,7 @@ public:
 		delete &value;
 	}
 
-	virtual llvm::Value* codeGen(CodeGenContext& context);
+	virtual CGValue codeGen(CodeGenContext& context);
 };
 class NChar : public NExpression {
 public:
@@ -302,7 +303,7 @@ public:
 	virtual ~NChar()
 	{ }
 
-	virtual llvm::Value* codeGen(CodeGenContext& context);
+	virtual CGValue codeGen(CodeGenContext& context);
 };
 class NBoolean : public NExpression {
 public:
@@ -314,7 +315,7 @@ public:
 
 	virtual ~NBoolean() {}
 
-	virtual llvm::Value* codeGen(CodeGenContext& context);
+	virtual CGValue codeGen(CodeGenContext& context);
 };
 class NDouble : public NExpression {
 public:
@@ -326,7 +327,7 @@ public:
 
 	virtual ~NDouble() {}
 
-	virtual llvm::Value* codeGen(CodeGenContext& context);
+	virtual CGValue codeGen(CodeGenContext& context);
 };
 class NString : public NExpression {
 public:
@@ -338,7 +339,7 @@ public:
 
 	virtual ~NString() {}
 
-	virtual llvm::Value* codeGen(CodeGenContext& context);
+	virtual CGValue codeGen(CodeGenContext& context);
 };
 // Primary Expression End
 
@@ -366,7 +367,7 @@ public:
 		delete &arguments;
 	}
 
-	virtual llvm::Value* codeGen(CodeGenContext& context);
+	virtual CGValue codeGen(CodeGenContext& context);
 };
 class NFieldExpr : public NExpression {
 public:
@@ -383,7 +384,7 @@ public:
 		delete &field_name;
 	}
 
-	virtual llvm::Value* codeGen(CodeGenContext& context);
+	virtual CGValue codeGen(CodeGenContext& context);
 };
 class NArrayExpr : public NExpression {
 public:
@@ -400,7 +401,7 @@ public:
 		delete &index;
 	}
 
-	virtual llvm::Value* codeGen(CodeGenContext& context);
+	virtual CGValue codeGen(CodeGenContext& context);
 };
 // Postfix Expression End
 
@@ -421,7 +422,7 @@ public:
 		delete &rval;
 	}
 
-	virtual llvm::Value* codeGen(CodeGenContext& context);
+	virtual CGValue codeGen(CodeGenContext& context);
 };
 
 // Prefix Expression
@@ -448,7 +449,7 @@ public:
 		delete &operand;
 	}
 
-	virtual llvm::Value* codeGen(CodeGenContext& context);
+	virtual CGValue codeGen(CodeGenContext& context);
 };
 
 class NIncDecExpr : public NExpression {
@@ -465,7 +466,7 @@ public:
 		delete &operand;
 	}
 
-	virtual llvm::Value* codeGen(CodeGenContext& context);
+	virtual CGValue codeGen(CodeGenContext& context);
 };
 
 class NAssignmentExpr : public NExpression {
@@ -486,7 +487,7 @@ public:
 		delete &rval;
 	}
 
-	virtual llvm::Value* codeGen(CodeGenContext& context);
+	virtual CGValue codeGen(CodeGenContext& context);
 };
 
 class NTypeof : public NType {
@@ -518,7 +519,7 @@ public:
 		delete &expression;
 	}
 
-	virtual llvm::Value* codeGen(CodeGenContext& context);
+	virtual CGValue codeGen(CodeGenContext& context);
 };
 
 class NIfStatement : public NStatement {
@@ -538,7 +539,7 @@ public:
 		delete if_else;
 	}
 
-	virtual llvm::Value* codeGen(CodeGenContext& context);
+	virtual CGValue codeGen(CodeGenContext& context);
 };
 
 class NParamDecl : public NStatement {
@@ -556,7 +557,7 @@ public:
 		delete &decl;
 	}
 
-	// virtual llvm::Value* codeGen(CodeGenContext& context);
+	// virtual CGValue codeGen(CodeGenContext& context);
 };
 
 class NLabelStatement : public NStatement {
@@ -572,7 +573,7 @@ public:
 		delete &statement;
 	}
 
-	virtual llvm::Value* codeGen(CodeGenContext& context);
+	virtual CGValue codeGen(CodeGenContext& context);
 };
 
 class NGotoStatement : public NStatement {
@@ -583,7 +584,7 @@ public:
 	label_name(label_name) { }
 
 	virtual ~NGotoStatement() {}
-	virtual llvm::Value* codeGen(CodeGenContext& context);
+	virtual CGValue codeGen(CodeGenContext& context);
 };
 
 class NDelegateDecl : public NStatement {
@@ -601,7 +602,7 @@ public:
 		delete &decl;
 	}
 
-    virtual llvm::Value* codeGen(CodeGenContext& context);
+    virtual CGValue codeGen(CodeGenContext& context);
 };
 
 class NVariableDecl : public NStatement {
@@ -634,7 +635,7 @@ public:
 		delete specifiers;
 	}
 
-	virtual llvm::Value* codeGen(CodeGenContext& context);
+	virtual CGValue codeGen(CodeGenContext& context);
 };
 
 class NStructDecl : public NStatement {
@@ -659,7 +660,7 @@ public:
 		}
 	}
 
-    virtual llvm::Value* codeGen(CodeGenContext& context);
+    virtual CGValue codeGen(CodeGenContext& context);
 };
 
 class NUnionDecl : public NStatement {
@@ -684,7 +685,7 @@ public:
 		}
 	}
 
-    virtual llvm::Value* codeGen(CodeGenContext& context);
+    virtual CGValue codeGen(CodeGenContext& context);
 };
 
 class NStructType : public NType {
@@ -747,7 +748,7 @@ public:
 		delete &decl;
 	}
 
-    virtual llvm::Value* codeGen(CodeGenContext& context);
+    virtual CGValue codeGen(CodeGenContext& context);
 };
 
 class NBlock : public NStatement {
@@ -765,7 +766,7 @@ public:
 		}
 	}
 
-	virtual llvm::Value* codeGen(CodeGenContext& context);
+	virtual CGValue codeGen(CodeGenContext& context);
 };
 
 class NFunctionDecl : public NStatement {
@@ -797,7 +798,7 @@ public:
 		delete specifiers;
 	}
 
-	virtual llvm::Value* codeGen(CodeGenContext& context);
+	virtual CGValue codeGen(CodeGenContext& context);
 };
 
 class NNameSpace : public NStatement {
@@ -816,7 +817,7 @@ public:
 			delete block;
 	}
 
-	virtual llvm::Value* codeGen(CodeGenContext& context);
+	virtual CGValue codeGen(CodeGenContext& context);
 };
 
 #endif
