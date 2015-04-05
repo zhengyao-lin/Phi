@@ -28,6 +28,14 @@ CGERR_setLineNum(CodeGenContext& context, int lineno)
 }
 
 inline void
+CGERR_setLineNum(CodeGenContext& context, int lineno, char *file_name)
+{
+	context.messages.setTopLineNumber(lineno);
+	context.messages.setTopFileName(file_name);
+	return;
+}
+
+inline void
 CGERR_Unknown_Type_Name(CodeGenContext& context, const char *name)
 {
 	context.messages.newMessage(new ErrorInfo(ErrorInfo::Error, true, ErrorInfo::Exit1,

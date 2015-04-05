@@ -5,6 +5,7 @@
 #include "Inlines.h"
 
 #define getLine(p) (((Declarator *)this)->lineno)
+#define getFile(p) (((Declarator *)this)->file_name)
 
 DeclInfo *
 IdentifierDeclarator::getDeclInfo(CodeGenContext& context, llvm::Type *base_type)
@@ -28,12 +29,12 @@ ArrayDeclarator::getDeclInfo(CodeGenContext& context, llvm::Type *base_type)
 			&& !context.in_param_flag) {
 			tmp_value = NAssignmentExpr::doAssignCast(context, (**arr_dim_di).codeGen(context),
 													  Type::getInt64Ty(getGlobalContext()),
-													  nullptr, lineno);
+													  nullptr, getLine(this), getFile(this));
 			if (tmp_const = dyn_cast<ConstantInt>(tmp_value)) {
 				elem_type = ArrayType::get(elem_type, tmp_const->getZExtValue());
 			} else {
 				CGERR_Non_Constant_Array_Size(context);
-				CGERR_setLineNum(context, dyn_cast<Declarator>(this)->lineno);
+				CGERR_setLineNum(context, getLine(this), getFile(this));
 				CGERR_showAllMsg(context);
 				return NULL;
 			}
@@ -79,8 +80,44 @@ InitDeclarator::getDeclInfo(CodeGenContext& context, llvm::Type *base_type)
 
 vector<Type*>
 getArgTypeList(CodeGenContext& context, ParamList params);
+
 bool
-checkParam(CodeGenContext& context, int lineno, vector<Type*>& arguments, ParamList& arg_nodes);
+checkParam(CodeGenContext& context, int lineno, char *file_name, vector<Type*>& arguments, ParamList& arg_nodes)
+{
+	vector<Type*>::const_iterator param_type_it;
+	ParamList::const_iterator param_it;
+	DeclInfo *decl_info_tmp;
+	Type *type_tmp;
+
+	context.in_param_flag++;
+	for (param_type_it = arguments.begin(), param_it = arg_nodes.begin();
+		 param_type_it != arguments.end();
+		 param_type_it++, param_it++) {
+		type_tmp = (*param_it)->type.getType(context);
+		decl_info_tmp = (*param_it)->decl.getDeclInfo(context, type_tmp);
+		if (isVoidType(*param_type_it)) { // param has void type
+			if (decl_info_tmp->id) {
+				CGERR_Void_Type_Param(context);
+				CGERR_setLineNum(context, lineno, file_name);
+				CGERR_showAllMsg(context);
+				return false;
+			} else if (arguments.end() - arguments.begin() > 1) {
+				CGERR_Void_Should_Be_The_Only_Param(context);
+				CGERR_setLineNum(context, lineno, file_name);
+				CGERR_showAllMsg(context);
+				return false;
+			}
+			param_type_it = arguments.erase(param_type_it);
+			param_it = arg_nodes.erase(param_it);
+			param_type_it--;
+			param_it--;
+		}
+		delete decl_info_tmp;
+	}
+	context.in_param_flag--;
+
+	return true;
+}
 
 DeclInfo *
 ParamDeclarator::getDeclInfo(CodeGenContext& context, llvm::Type *base_type)
@@ -92,7 +129,7 @@ ParamDeclarator::getDeclInfo(CodeGenContext& context, llvm::Type *base_type)
 	FunctionType *ftype;
 
 	param_vec = getArgTypeList(context, arguments);
-	checkParam(context, ((Declarator *)this)->lineno, param_vec, arguments);
+	checkParam(context, ((Declarator *)this)->lineno, ((Declarator *)this)->file_name, param_vec, arguments);
 	ftype = FunctionType::get(base_type, makeArrayRef(param_vec), has_vargs);
 
 	ret = decl.getDeclInfo(context, ftype);

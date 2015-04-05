@@ -31,23 +31,27 @@ typedef std::vector<Declarator *> DeclaratorList;
 class Node {
 public:
 	int lineno = -1;
+	char *file_name = NULL;
 	virtual ~Node() {}
 	virtual CGValue codeGen(CodeGenContext& context) { return CGValue(); }
 };
 class NStatement : public Node {
 public:
 	int lineno = -1;
+	char *file_name = NULL;
 	virtual ~NStatement() {}
 };
 class NExpression : public NStatement {
 public:
 	int lineno = -1;
+	char *file_name = NULL;
 	virtual ~NExpression() {}
 };
 
 class NIdentifier : public NExpression {
 public:
 	int lineno = -1;
+	char *file_name = NULL;
 	std::string& name;
 
 	NIdentifier(std::string& name) :
@@ -81,6 +85,7 @@ public:
 class Declarator {
 public:
 	int lineno = -1;
+	char *file_name = NULL;
 	virtual ~Declarator() {}
 	virtual DeclInfo *getDeclInfo(CodeGenContext& context, llvm::Type *base_type)
 	{
@@ -91,6 +96,7 @@ public:
 class IdentifierDeclarator : public Declarator {
 public:
 	int lineno = -1;
+	char *file_name = NULL;
 	NIdentifier &id;
 
 	IdentifierDeclarator(NIdentifier& id) :
@@ -107,6 +113,7 @@ public:
 class ArrayDeclarator : public Declarator {
 public:
 	int lineno = -1;
+	char *file_name = NULL;
 	Declarator& decl;
 	ArrayDim& array_dim;
 
@@ -125,6 +132,7 @@ public:
 class PointerDeclarator : public Declarator {
 public:
 	int lineno = -1;
+	char *file_name = NULL;
 	int ptr_dim;
 	Declarator& decl;
 
@@ -142,6 +150,7 @@ public:
 class ParamDeclarator : public Declarator {
 public:
 	int lineno = -1;
+	char *file_name = NULL;
 	Declarator& decl;
 	ParamList& arguments;
 	bool has_vargs;
@@ -166,6 +175,7 @@ public:
 class InitDeclarator : public Declarator {
 public:
 	int lineno = -1;
+	char *file_name = NULL;
 	Declarator& decl;
 	NExpression *initializer = NULL;
 
@@ -184,6 +194,7 @@ public:
 class NType {
 public:
 	int lineno = -1;
+	char *file_name = NULL;
 	virtual llvm::Type* getType(CodeGenContext& context);
 	virtual ~NType() {}
 };
@@ -191,6 +202,7 @@ public:
 class NDerivedType : public NType {
 public:
 	int lineno = -1;
+	char *file_name = NULL;
 	NType& base;
 	int ptr_dim;
 
@@ -253,6 +265,7 @@ public:
 class NIdentifierType : public NType {
 public:
 	int lineno = -1;
+	char *file_name = NULL;
 	NIdentifier& type;
 	
 	NIdentifierType(NIdentifier &type) :
@@ -269,6 +282,7 @@ public:
 // Constant
 class NVoid : public NExpression {
 	int lineno = -1;
+	char *file_name = NULL;
 
 	virtual CGValue codeGen(CodeGenContext& context)
 	{
@@ -280,6 +294,7 @@ class NVoid : public NExpression {
 class NInteger : public NExpression {
 public:
 	int lineno = -1;
+	char *file_name = NULL;
 	std::string& value;
 
 	NInteger(std::string& value) :
@@ -295,6 +310,7 @@ public:
 class NChar : public NExpression {
 public:
 	int lineno = -1;
+	char *file_name = NULL;
 	char value;
 
 	NChar(char value) :
@@ -308,6 +324,7 @@ public:
 class NBoolean : public NExpression {
 public:
 	int lineno = -1;
+	char *file_name = NULL;
 	bool value;
 
 	NBoolean(bool value) :
@@ -320,6 +337,7 @@ public:
 class NDouble : public NExpression {
 public:
 	int lineno = -1;
+	char *file_name = NULL;
 	double value;
 
 	NDouble(double value) :
@@ -332,6 +350,7 @@ public:
 class NString : public NExpression {
 public:
 	int lineno = -1;
+	char *file_name = NULL;
 	std::string value;
 
 	NString(const std::string& value) :
@@ -347,6 +366,7 @@ public:
 class NMethodCall : public NExpression {
 public:
 	int lineno = -1;
+	char *file_name = NULL;
 	NExpression& func_expr;
 	ExpressionList& arguments;
 
@@ -372,6 +392,7 @@ public:
 class NFieldExpr : public NExpression {
 public:
 	int lineno = -1;
+	char *file_name = NULL;
 	NExpression& operand;
 	NIdentifier& field_name;
 
@@ -389,6 +410,7 @@ public:
 class NArrayExpr : public NExpression {
 public:
 	int lineno = -1;
+	char *file_name = NULL;
 	NExpression& operand;
 	NExpression& index;
 
@@ -409,6 +431,7 @@ public:
 class NBinaryExpr : public NExpression {
 public:
 	int lineno = -1;
+	char *file_name = NULL;
 	int op;
 	bool do_not_delete_lval = false;
 	NExpression& lval;
@@ -434,6 +457,7 @@ public:
 class NPrefixExpr : public NExpression {
 public:
 	int lineno = -1;
+	char *file_name = NULL;
 	int op;
 	NType& type;
 	NExpression& operand;
@@ -460,6 +484,7 @@ public:
 class NIncDecExpr : public NExpression {
 public:
 	int lineno = -1;
+	char *file_name = NULL;
 	int op;
 	NExpression& operand;
 
@@ -477,6 +502,7 @@ public:
 class NAssignmentExpr : public NExpression {
 public:
 	int lineno = -1;
+	char *file_name = NULL;
 	NExpression& lval;
 	NExpression& rval;
 
@@ -484,7 +510,7 @@ public:
 	lval(lval), rval(rval) { }
 
 	static llvm::Value *doAssignCast(CodeGenContext& context, llvm::Value *value,
-									  llvm::Type *variable_type, llvm::Value *variable, int lineno);
+									  llvm::Type *variable_type, llvm::Value *variable, int lineno, char *file_name);
 
 	virtual ~NAssignmentExpr()
 	{
@@ -498,6 +524,7 @@ public:
 class NTypeof : public NType {
 public:
 	int lineno = -1;
+	char *file_name = NULL;
 	NExpression& operand;
 	
 	NTypeof(NExpression& operand) :
@@ -514,6 +541,7 @@ public:
 class NReturnStatement : public NStatement {
 public:
 	int lineno = -1;
+	char *file_name = NULL;
 	NExpression& expression;
 
 	NReturnStatement(NExpression& expression) :
@@ -530,6 +558,7 @@ public:
 class NIfStatement : public NStatement {
 public:
 	int lineno = -1;
+	char *file_name = NULL;
 	NExpression& condition;
 	NStatement *if_true;
 	NStatement *if_else;
@@ -550,6 +579,7 @@ public:
 class NWhileStatement : public NStatement {
 public:
 	int lineno = -1;
+	char *file_name = NULL;
 	NExpression& condition;
 	NStatement *while_true;
 
@@ -568,6 +598,7 @@ public:
 class NParamDecl : public NStatement {
 public:
 	int lineno = -1;
+	char *file_name = NULL;
 	NType& type;
 	Declarator& decl;
 
@@ -613,6 +644,7 @@ public:
 class NDelegateDecl : public NStatement {
 public:
 	int lineno = -1;
+	char *file_name = NULL;
 	NType& type;
 	Declarator& decl;
 
@@ -631,6 +663,7 @@ public:
 class NVariableDecl : public NStatement {
 public:
 	int lineno = -1;
+	char *file_name = NULL;
 	DeclSpecifier& var_specifier;
 	DeclaratorList *declarator_list;
 
@@ -664,6 +697,7 @@ public:
 class NStructDecl : public NStatement {
 public:
 	int lineno = -1;
+	char *file_name = NULL;
 	NIdentifier& id;
     VariableList *fields;
 
@@ -689,6 +723,7 @@ public:
 class NUnionDecl : public NStatement {
 public:
 	int lineno = -1;
+	char *file_name = NULL;
 	NIdentifier& id;
 	VariableList *fields;
 
@@ -714,6 +749,7 @@ public:
 class NStructType : public NType {
 public:
 	int lineno = -1;
+	char *file_name = NULL;
 	NStructDecl *struct_decl;
 
     NStructType(NStructDecl *struct_decl) :
@@ -730,6 +766,7 @@ public:
 class NUnionType : public NType {
 public:
 	int lineno = -1;
+	char *file_name = NULL;
 	NUnionDecl *union_decl;
 
     NUnionType(NUnionDecl *union_decl) :
@@ -746,6 +783,7 @@ public:
 class NBitFieldType : public NType {
 public:
 	int lineno = -1;
+	char *file_name = NULL;
 	unsigned bit_length;
 
     NBitFieldType(unsigned bit_length) :
@@ -759,6 +797,7 @@ public:
 class NTypedefDecl : public NStatement {
 public:
 	int lineno = -1;
+	char *file_name = NULL;
 	NType& type;
 	Declarator& decl;
 
@@ -777,6 +816,7 @@ public:
 class NBlock : public NStatement {
 public:
 	int lineno = -1;
+	char *file_name = NULL;
 	StatementList statements;
 
 	NBlock() { }
@@ -795,6 +835,7 @@ public:
 class NFunctionDecl : public NStatement {
 public:
 	int lineno = -1;
+	char *file_name = NULL;
 	DeclSpecifier& func_specifier;
 	Declarator& decl;
 	NBlock *block;
@@ -827,6 +868,7 @@ public:
 class NNameSpace : public NStatement {
 public:
 	int lineno = -1;
+	char *file_name = NULL;
 	std::string& name;
 	NBlock *block;
 

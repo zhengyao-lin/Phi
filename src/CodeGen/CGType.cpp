@@ -4,6 +4,9 @@
 #include "Grammar/Parser.hpp"
 #include "Inlines.h"
 
+#define getLine(p) (((NType*)p)->lineno)
+#define getFile(p) (((NType*)p)->file_name)
+
 static Type *typeOf(CodeGenContext &context, const NIdentifier& type)
 {
 	Type *ret;
@@ -13,20 +16,20 @@ static Type *typeOf(CodeGenContext &context, const NIdentifier& type)
 
 	if (context.getType(STRUCT_PREFIX + type.name)) {
 		CGERR_Suppose_To_Be_Struct_Type(context, type.name.c_str());
-		CGERR_setLineNum(context, type.lineno);
+		CGERR_setLineNum(context, getLine(&type), getFile(&type));
 		CGERR_showAllMsg(context);
 		return NULL;
 	}
 
 	if (context.getType(UNION_PREFIX + type.name)) {
 		CGERR_Suppose_To_Be_Union_Type(context, type.name.c_str());
-		CGERR_setLineNum(context, type.lineno);
+		CGERR_setLineNum(context, getLine(&type), getFile(&type));
 		CGERR_showAllMsg(context);
 		return NULL;
 	}
 
 	CGERR_Unknown_Type_Name(context, type.name.c_str());
-	CGERR_setLineNum(context, type.lineno);
+	CGERR_setLineNum(context, getLine(&type), getFile(&type));
 	CGERR_showAllMsg(context);
 
 	return NULL;
@@ -109,11 +112,11 @@ NBitFieldType::getType(CodeGenContext& context)
 {
 	if (bit_length > 128) {
 		CGERR_Too_Huge_Integer(context, bit_length);
-		CGERR_setLineNum(context, ((NType*)this)->lineno);
+		CGERR_setLineNum(context, getLine(this), getFile(this));
 		CGERR_showAllMsg(context);
 	} else if (bit_length == 0) {
 		CGERR_Integer_Type_With_Size_Of_Zero(context);
-		CGERR_setLineNum(context, ((NType*)this)->lineno);
+		CGERR_setLineNum(context, getLine(this), getFile(this));
 		CGERR_showAllMsg(context);
 		return NULL;
 	}

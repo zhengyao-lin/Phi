@@ -9,6 +9,9 @@ LETTER			[a-zA-Z_]
 ISUFFIX			(l|L|s|S|u|U)+
 FSUFFIX			(l|L)
 
+DIGITS			({DIGIT})+
+SPS				({SP})+
+
 %{
 #include <stdio.h>
 #include <string>
@@ -26,12 +29,57 @@ std::string* string_literal = NULL;
 bool is_string = false;
 extern CodeGenContext *global_context;
 extern std::map<std::string, int> type_def;
+extern char *current_file;
+
+#define BUFFER_SIZE 1024
+#define ARG_SIZE 10
+void
+setFile(char *text, int length)
+{
+	int i;
+	char *file = NULL;
+	char tmp_buf[BUFFER_SIZE];
+	int args[ARG_SIZE];
+	int arg_count = 0;
+
+	for (i = 0; i < length; i++) {
+		switch (text[i]) {
+			case '#': continue;
+			case ' ': continue;
+			case '\t': continue;
+			case '\v': continue;
+			case '\f': continue;
+			case '"':
+				sscanf(&text[++i], "%s\"", tmp_buf);
+				tmp_buf[strlen(tmp_buf) - 1] = '\0';
+				file = strdup(tmp_buf);
+				i += strlen(file) + 1;
+				break;
+			default:
+				sscanf(&text[i], "%d", &args[arg_count]);
+				sprintf(tmp_buf, "%d", args[arg_count]);
+				i += strlen(tmp_buf) - 1;
+				arg_count++;
+				break;
+		}
+	}
+
+	//printf("%d, %s, %d, %d, %d\n", args[0], file, args[1], args[2], args[3]);
+	current_file = file;
+	current_line_number = args[0];
+
+	return;
+}
 %}
 
 %option noyywrap
 %start C_COMMENT CC_COMMENT STRING_LITERAL_STATE
 
 %%
+<INITIAL>#{SPS}{DIGITS}{SPS}\".*\"({SPS}{DIGITS})*{NEWLINE} {
+	setFile(yytext, yyleng);
+}
+
 <INITIAL>"namespace"						return TOKEN(TNAMESPACE);
 <INITIAL>"if"								return TOKEN(TIF);
 <INITIAL>"else"							return TOKEN(TELSE);

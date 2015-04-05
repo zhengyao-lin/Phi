@@ -259,6 +259,13 @@ ErrorMessage::setTopLineNumber(int line_number)
 }
 
 void
+ErrorMessage::setTopFileName(char *file_name)
+{
+	Buffer.front()->addPrefix(string(file_name) + ": ");
+	return;
+}
+
+void
 ErrorMessage::tmpError(string msg)
 {
 	ErrorInfo *err = new ErrorInfo(ErrorInfo::Error, true,

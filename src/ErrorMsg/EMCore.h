@@ -109,6 +109,9 @@ public:
 	void
 	setTopLineNumber(int line_number);
 
+	void
+	setTopFileName(char *file_name);
+
 	static void
 	tmpError(string msg);
 };

@@ -4,6 +4,9 @@
 #include "Grammar/Parser.hpp"
 #include "Inlines.h"
 
+#define getLine(p) (((NExpression *)this)->lineno)
+#define getFile(p) (((NExpression *)this)->file_name)
+
 CGValue
 codeGenLoadValue(CodeGenContext& context, Value *val)
 {
@@ -74,7 +77,7 @@ NIdentifier::codeGen(CodeGenContext& context)
 	}
 
 	CGERR_Undeclared_Identifier(context, name.c_str());
-	CGERR_setLineNum(context, this->lineno);
+	CGERR_setLineNum(context, getLine(this), getFile(this));
 	CGERR_showAllMsg(context);
 	return CGValue();
 }
@@ -95,7 +98,7 @@ NMethodCall::codeGen(CodeGenContext& context)
 
 	if (context.isLValue()) {
 		CGERR_Function_Call_As_LValue(context);
-		CGERR_setLineNum(context, dyn_cast<NExpression>(this)->lineno);
+		CGERR_setLineNum(context, getLine(this), getFile(this));
 		CGERR_showAllMsg(context);
 		return CGValue();
 	}
@@ -105,7 +108,7 @@ NMethodCall::codeGen(CodeGenContext& context)
 		ftype = (FunctionType *)func_val->getType()->getPointerElementType();
 	} else {
 		CGERR_Calling_Non_Function_Value(context);
-		CGERR_setLineNum(context, dyn_cast<NExpression>(this)->lineno);
+		CGERR_setLineNum(context, getLine(this), getFile(this));
 		CGERR_showAllMsg(context);
 		return CGValue();
 	}
@@ -123,7 +126,7 @@ NMethodCall::codeGen(CodeGenContext& context)
 
 		args.push_back(NAssignmentExpr::doAssignCast(context, tmp,
 													 arg_type, nullptr,
-													 dyn_cast<NExpression>(this)->lineno));
+													 getLine(this), getFile(this)));
 	}
 
 	call = context.builder->CreateCall(func_val, makeArrayRef(args), "");
@@ -185,7 +188,7 @@ NBinaryExpr::codeGen(CodeGenContext& context)
 	if ((lhs->getType()->isPointerTy() || lhs->getType()->isArrayTy())
 		&& rhs->getType()->isIntegerTy()) {
 		rhs = NAssignmentExpr::doAssignCast(context, rhs, Type::getInt64Ty(getGlobalContext()), NULL,
-											dyn_cast<NExpression>(this)->lineno);
+											getLine(this), getFile(this));
 		if (op == TSUB) {
 			rhs = context.builder->CreateSub(ConstantInt::get(rhs->getType(), 0),
 											 rhs, "");
@@ -236,7 +239,7 @@ NBinaryExpr::codeGen(CodeGenContext& context)
 			case TSHL:
 			case TSHR:
 				CGERR_FP_Value_With_Shift_Operation(context);
-				CGERR_setLineNum(context, dyn_cast<NExpression>(this)->lineno);
+				CGERR_setLineNum(context, getLine(this), getFile(this));
 				CGERR_showAllMsg(context);
 				return CGValue();
 			case TCEQ:		return CGValue(context.builder->CreateFCmpOEQ(lhs, rhs, ""));
@@ -266,7 +269,7 @@ NBinaryExpr::codeGen(CodeGenContext& context)
 	}
 
 	CGERR_Unknown_Binary_Operation(context);
-	CGERR_setLineNum(context, dyn_cast<NExpression>(this)->lineno);
+	CGERR_setLineNum(context, getLine(this), getFile(this));
 	CGERR_showAllMsg(context);
 	return CGValue();
 }
@@ -326,7 +329,7 @@ NPrefixExpr::codeGen(CodeGenContext& context)
 				return CGValue(val_tmp);
 			} else {
 				CGERR_Get_Non_Resident_Value_Address(context);
-				CGERR_setLineNum(context, dyn_cast<NExpression>(this)->lineno);
+				CGERR_setLineNum(context, getLine(this), getFile(this));
 				CGERR_showAllMsg(context);
 				return CGValue();
 			}
@@ -334,14 +337,14 @@ NPrefixExpr::codeGen(CodeGenContext& context)
 	} else if (op == -1) {
 		return CGValue(NAssignmentExpr::doAssignCast(context, val_tmp,
 											  type_expr_operand, nullptr,
-											  dyn_cast<NExpression>(this)->lineno));
+											  getLine(this), getFile(this)));
 	} else if (op == TSIZEOF) {
 		if (!type_expr_operand->isVoidTy()) {
 			return CGValue(ConstantInt::get(Type::getInt64Ty(getGlobalContext()),
 									 getSizeOfJIT(type_expr_operand)));
 		} else {
 			CGERR_Get_Sizeof_Void(context);
-			CGERR_setLineNum(context, dyn_cast<NExpression>(this)->lineno);
+			CGERR_setLineNum(context, getLine(this), getFile(this));
 			CGERR_showAllMsg(context);
 			return CGValue();
 		}
@@ -351,7 +354,7 @@ NPrefixExpr::codeGen(CodeGenContext& context)
 									 getAlignOfJIT(type_expr_operand)));
 		} else {
 			CGERR_Get_Alignof_Void(context);
-			CGERR_setLineNum(context, dyn_cast<NExpression>(this)->lineno);
+			CGERR_setLineNum(context, getLine(this), getFile(this));
 			CGERR_showAllMsg(context);
 			return CGValue();
 		}
@@ -381,7 +384,7 @@ NPrefixExpr::codeGen(CodeGenContext& context)
 		}
 		if (!(val_ptr = getLoadOperand(context, val_tmp, false))) {
 			CGERR_Inc_Dec_Unassignable_Value(context);
-			CGERR_setLineNum(context, dyn_cast<NExpression>(this)->lineno);
+			CGERR_setLineNum(context, getLine(this), getFile(this));
 			CGERR_showAllMsg(context);
 			return CGValue();
 		}
@@ -454,7 +457,7 @@ NPrefixExpr::codeGen(CodeGenContext& context)
 	}
 
 	CGERR_Unknown_Unary_Operation(context);
-	CGERR_setLineNum(context, dyn_cast<NExpression>(this)->lineno);
+	CGERR_setLineNum(context, getLine(this), getFile(this));
 	CGERR_showAllMsg(context);
 	return CGValue();
 }
@@ -475,7 +478,7 @@ T getConstantArrayElementCastTo(ConstantDataSequential *const_data_seq, int i)
 
 static Constant *
 doAlignArray(CodeGenContext& context, Constant *array, Type *dest_type,
-			 uint64_t size, int lineno)
+			 uint64_t size, int lineno, char *file_name)
 {
 	unsigned i;
 	ConstantDataSequential *const_data_seq = dyn_cast<ConstantDataSequential>(array);
@@ -513,7 +516,7 @@ doAlignArray(CodeGenContext& context, Constant *array, Type *dest_type,
 				}
 				default:
 					CGERR_Unsupport_Integer_Bitwidth_For_Data_Array(context);
-					CGERR_setLineNum(context, lineno);
+					CGERR_setLineNum(context, lineno, file_name);
 					CGERR_showAllMsg(context);
 					return NULL;
 			}
@@ -542,7 +545,7 @@ doAlignArray(CodeGenContext& context, Constant *array, Type *dest_type,
 
 Value *
 NAssignmentExpr::doAssignCast(CodeGenContext& context, Value *value,
-							  Type *variable_type, Value *variable, int lineno = -1)
+							  Type *variable_type, Value *variable, int lineno, char *file_name)
 {
 	Type *value_type;
 	Value *val_tmp;
@@ -581,7 +584,7 @@ NAssignmentExpr::doAssignCast(CodeGenContext& context, Value *value,
 				!= var_elem_type->getNumElements()) {
 				value = doAlignArray(context, dyn_cast<Constant>(value),
 									 var_elem_type->getArrayElementType(),
-									 var_elem_type->getNumElements(), lineno);
+									 var_elem_type->getNumElements(), lineno, file_name);
 			}
 
 			return value;
@@ -636,7 +639,7 @@ NAssignmentExpr::codeGen(CodeGenContext& context)
 	if (!isPointer(lhs)
 		/*|| typeid(lval) == typeid(NBinaryExpr)*/) {
 		CGERR_Unassignable_LValue(context);
-		CGERR_setLineNum(context, ((NExpression*)this)->lineno);
+		CGERR_setLineNum(context, getLine(this), getFile(this));
 		CGERR_showAllMsg(context);
 		return CGValue();
 	}
@@ -650,7 +653,7 @@ NAssignmentExpr::codeGen(CodeGenContext& context)
 
 	rhs = NAssignmentExpr::doAssignCast(context, rhs,
 										lhs->getType()->getPointerElementType(), lhs,
-										((NExpression*)this)->lineno);
+										getLine(this), getFile(this));
 
 	if (!rhs) {
 		return CGValue(rhs);
@@ -683,7 +686,7 @@ NFieldExpr::codeGen(CodeGenContext& context)
 		struct_type = struct_value->getType()->getPointerElementType();
 	} else {
 		CGERR_Get_Non_Structure_Type_Field(context);
-		CGERR_setLineNum(context, dyn_cast<NExpression>(this)->lineno);
+		CGERR_setLineNum(context, getLine(this), getFile(this));
 		CGERR_showAllMsg(context);
 		return CGValue();
 	}
@@ -709,7 +712,7 @@ NFieldExpr::codeGen(CodeGenContext& context)
 												 "");
 		} else {
 			CGERR_Failed_To_Find_Field_Name(context, field_name.name.c_str());
-			CGERR_setLineNum(context, dyn_cast<NExpression>(this)->lineno);
+			CGERR_setLineNum(context, getLine(this), getFile(this));
 			CGERR_showAllMsg(context);
 			return CGValue();
 		}
@@ -718,7 +721,7 @@ NFieldExpr::codeGen(CodeGenContext& context)
 			ret = context.builder->CreateStructGEP(struct_value, map[field_name.name], "");
 		} else {
 			CGERR_Failed_To_Find_Field_Name(context, field_name.name.c_str());
-			CGERR_setLineNum(context, dyn_cast<NExpression>(this)->lineno);
+			CGERR_setLineNum(context, getLine(this), getFile(this));
 			CGERR_showAllMsg(context);
 			return CGValue();
 		}
@@ -747,7 +750,7 @@ NArrayExpr::codeGen(CodeGenContext& context)
 	}
 
 	idx = NAssignmentExpr::doAssignCast(context, idx, Type::getInt64Ty(getGlobalContext()), NULL,
-										dyn_cast<NExpression>(this)->lineno);
+										getLine(this), getFile(this));
 
 	if (isArrayPointer(array_value)) {
 		if (typeid(operand) == typeid(NBinaryExpr)) {
@@ -764,7 +767,7 @@ NArrayExpr::codeGen(CodeGenContext& context)
 												 idx, "");
 	} else {
 		CGERR_Get_Non_Array_Element(context);
-		CGERR_setLineNum(context, dyn_cast<NExpression>(this)->lineno);
+		CGERR_setLineNum(context, getLine(this), getFile(this));
 		CGERR_showAllMsg(context);
 		return CGValue();
 	}
@@ -805,7 +808,7 @@ NIncDecExpr::codeGen(CodeGenContext& context)
 
 	if (!(val_ptr = getLoadOperand(context, val_tmp, false))) {
 		CGERR_Inc_Dec_Unassignable_Value(context);
-		CGERR_setLineNum(context, dyn_cast<NExpression>(this)->lineno);
+		CGERR_setLineNum(context, getLine(this), getFile(this));
 		CGERR_showAllMsg(context);
 		return CGValue();
 	}

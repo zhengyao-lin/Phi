@@ -6,6 +6,8 @@
 
 #define setBlock(b) (context.pushBlock(b), \
 					 context.builder->SetInsertPoint(context.currentBlock()))
+#define getLine(p) (((NStatement *)this)->lineno)
+#define getFile(p) (((NStatement *)this)->file_name)
 
 CGValue
 NBlock::codeGen(CodeGenContext& context)
@@ -33,7 +35,7 @@ NReturnStatement::codeGen(CodeGenContext& context)
 	if (tmp_val) {
 		ret_val = NAssignmentExpr::doAssignCast(context, tmp_val,
 												context.currentBlock()->getParent()->getReturnType(),
-												NULL, ((NStatement*)this)->lineno);
+												NULL, getLine(this), getFile(this));
 	} else {
 		return CGValue(context.builder->CreateRetVoid());
 	}

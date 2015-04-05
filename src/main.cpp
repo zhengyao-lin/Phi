@@ -103,13 +103,16 @@ public:
 
 	void applySetting()
 	{
+		extern char *current_file;
 		extern FILE *yyin;
 		if (hasInput()) {
+			current_file = strdup(input_file.c_str());
 			yyin = fopen(input_file.c_str(), "r");
 			if (!yyin) {
 				ErrorMessage::tmpError("Cannot find source file: " + input_file);
 			}
 		} else {
+			current_file = "<STD_IN>";
 			yyin = stdin;
 		}
 	}

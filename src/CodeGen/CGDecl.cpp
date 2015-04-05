@@ -5,6 +5,7 @@
 #include "Inlines.h"
 
 #define getLine(p) (((NStatement *)this)->lineno)
+#define getFile(p) (((NStatement *)this)->file_name)
 
 inline void
 cleanDeclInfo(DeclInfo *decl_info)
@@ -37,7 +38,7 @@ getArgTypeList(CodeGenContext& context, ParamList params)
 }
 
 static Type *
-setArrayType(CodeGenContext& context, Type *elem_type, ArrayDim& array_dim, int lineno)
+setArrayType(CodeGenContext& context, Type *elem_type, ArrayDim& array_dim, int lineno, char *file_name)
 {
 	Value *tmp_value;
 	ConstantInt *tmp_const;
@@ -48,12 +49,12 @@ setArrayType(CodeGenContext& context, Type *elem_type, ArrayDim& array_dim, int 
 		if (*arr_dim_di) { // equals []
 			tmp_value = NAssignmentExpr::doAssignCast(context, (**arr_dim_di).codeGen(context),
 													  Type::getInt64Ty(getGlobalContext()),
-													  nullptr, lineno);
+													  nullptr, lineno, file_name);
 			if (tmp_const = dyn_cast<ConstantInt>(tmp_value)) {
 				elem_type = ArrayType::get(elem_type, tmp_const->getZExtValue());
 			} else {
 				CGERR_Non_Constant_Array_Size(context);
-				CGERR_setLineNum(context, lineno);
+				CGERR_setLineNum(context, lineno, file_name);
 				CGERR_showAllMsg(context);
 				return NULL;
 			}
@@ -107,7 +108,7 @@ NVariableDecl::codeGen(CodeGenContext& context)
 			tmp_type = decl_info_tmp->type;
 			if (tmp_type->isVoidTy()) {
 				CGERR_Invalid_Use_Of_Void(context);
-				CGERR_setLineNum(context, getLine(this));
+				CGERR_setLineNum(context, getLine(this), getFile(this));
 				CGERR_showAllMsg(context);
 				return CGValue();
 			}
@@ -142,7 +143,7 @@ NVariableDecl::codeGen(CodeGenContext& context)
 						tmp_type = context.builder->getInt8Ty();
 					} else {
 						CGERR_Invalid_Use_Of_Void(context);
-						CGERR_setLineNum(context, getLine(this));
+						CGERR_setLineNum(context, getLine(this), getFile(this));
 						CGERR_showAllMsg(context);
 						return CGValue();
 					}
@@ -155,9 +156,9 @@ NVariableDecl::codeGen(CodeGenContext& context)
 				if (decl_info_tmp->expr) {
 					if (!(init_value = dyn_cast<Constant>(NAssignmentExpr::doAssignCast(context, decl_info_tmp->expr->codeGen(context),
 																						tmp_type, nullptr,
-																						getLine(this))))) {
+																						getLine(this), getFile(this))))) {
 						CGERR_External_Variable_Is_Not_Constant(context);
-						CGERR_setLineNum(context, getLine(this));
+						CGERR_setLineNum(context, getLine(this), getFile(this));
 						CGERR_showAllMsg(context);
 						return CGValue();
 					}
@@ -175,44 +176,6 @@ NVariableDecl::codeGen(CodeGenContext& context)
 	}
 
 	return CGValue();
-}
-
-bool
-checkParam(CodeGenContext& context, int lineno, vector<Type*>& arguments, ParamList& arg_nodes)
-{
-	vector<Type*>::const_iterator param_type_it;
-	ParamList::const_iterator param_it;
-	DeclInfo *decl_info_tmp;
-	Type *type_tmp;
-
-	context.in_param_flag++;
-	for (param_type_it = arguments.begin(), param_it = arg_nodes.begin();
-		 param_type_it != arguments.end();
-		 param_type_it++, param_it++) {
-		type_tmp = (*param_it)->type.getType(context);
-		decl_info_tmp = (*param_it)->decl.getDeclInfo(context, type_tmp);
-		if (isVoidType(*param_type_it)) { // param has void type
-			if (decl_info_tmp->id) {
-				CGERR_Void_Type_Param(context);
-				CGERR_setLineNum(context, lineno);
-				CGERR_showAllMsg(context);
-				return false;
-			} else if (arguments.end() - arguments.begin() > 1) {
-				CGERR_Void_Should_Be_The_Only_Param(context);
-				CGERR_setLineNum(context, lineno);
-				CGERR_showAllMsg(context);
-				return false;
-			}
-			param_type_it = arguments.erase(param_type_it);
-			param_it = arg_nodes.erase(param_it);
-			param_type_it--;
-			param_it--;
-		}
-		delete decl_info_tmp;
-	}
-	context.in_param_flag--;
-
-	return true;
 }
 
 CGValue
@@ -249,7 +212,7 @@ NStructDecl::codeGen(CodeGenContext& context)
 		if (context.getStruct(real_name)
 			&& fields) { // redefinition
 			CGERR_Redefinition_Of_Struct(context, id.name.c_str());
-			CGERR_setLineNum(context, getLine(this));
+			CGERR_setLineNum(context, getLine(this), getFile(this));
 			CGERR_showAllMsg(context);
 			return CGValue();
 		}
@@ -277,7 +240,7 @@ NStructDecl::codeGen(CodeGenContext& context)
 
 				if (decl_info_tmp->expr) {
 					CGERR_Initializer_Cannot_Be_In_Struct(context);
-					CGERR_setLineNum(context, getLine(*var_it));
+					CGERR_setLineNum(context, getLine(*var_it), getFile(*var_it));
 					CGERR_showAllMsg(context);
 					return CGValue();
 				}
@@ -311,7 +274,7 @@ NUnionDecl::codeGen(CodeGenContext& context)
 		if (context.getUnion(real_name)
 			&& fields) { // redefinition
 			CGERR_Redefinition_Of_Union(context, id.name.c_str());
-			CGERR_setLineNum(context, getLine(this));
+			CGERR_setLineNum(context, getLine(this), getFile(this));
 			CGERR_showAllMsg(context);
 			return CGValue();
 		}
@@ -348,7 +311,7 @@ NUnionDecl::codeGen(CodeGenContext& context)
 
 				if (decl_info_tmp->expr) {
 					CGERR_Initializer_Cannot_Be_In_Union(context);
-					CGERR_setLineNum(context, getLine(*var_it));
+					CGERR_setLineNum(context, getLine(*var_it), getFile(*ver_it));
 					CGERR_showAllMsg(context);
 					return CGValue();
 				}
@@ -420,7 +383,7 @@ NFunctionDecl::codeGen(CodeGenContext& context)
 		if (param_type_it != arg_types.end()
 			|| arg_it != function->arg_end()) {
 			CGERR_Conflicting_Type(context, main_decl_info->id->name.c_str(), param_type_it - arg_types.begin() + 1);
-			CGERR_setLineNum(context, getLine(this));
+			CGERR_setLineNum(context, getLine(this), getFile(this));
 			CGERR_showAllMsg(context);
 			return CGValue();
 		}
@@ -429,14 +392,14 @@ NFunctionDecl::codeGen(CodeGenContext& context)
 	if (block) {
 		if (context.currentBlock()) {
 			CGERR_Nesting_Function(context);
-			CGERR_setLineNum(context, getLine(this));
+			CGERR_setLineNum(context, getLine(this), getFile(this));
 			CGERR_showAllMsg(context);
 			return CGValue();
 		}
 
 		if (function->begin() != function->end()) {
 			CGERR_Redefinition_Of_Function(context, main_decl_info->id->name.c_str());
-			CGERR_setLineNum(context, getLine(this));
+			CGERR_setLineNum(context, getLine(this), getFile(this));
 			CGERR_showAllMsg(context);
 			return CGValue();
 		}
@@ -450,7 +413,7 @@ NFunctionDecl::codeGen(CodeGenContext& context)
 				context.builder->CreateAlloca(function->getReturnType(), nullptr, "");
 			} else {
 				CGERR_Invalid_Main_Function_Return_Type(context);
-				CGERR_setLineNum(context, getLine(this));
+				CGERR_setLineNum(context, getLine(this), getFile(this));
 				CGERR_showAllMsg(context);
 			}
 
@@ -471,7 +434,7 @@ NFunctionDecl::codeGen(CodeGenContext& context)
 					context.getTopLocals()[decl_info_tmp->id->name] = alloc_inst;
 				} else {
 					CGERR_Useless_Param(context);
-					CGERR_setLineNum(context, getLine(this));
+					CGERR_setLineNum(context, getLine(this), getFile(this));
 					CGERR_showAllMsg(context);
 					AllocaInst *alloc_inst = context.builder->CreateAlloca(arg_it->getType(),
 																		   nullptr, "");
@@ -488,7 +451,7 @@ NFunctionDecl::codeGen(CodeGenContext& context)
 				context.builder->CreateRetVoid();
 			} else {
 				CGERR_Missing_Return_Statement(context);
-				CGERR_setLineNum(context, getLine(this));
+				CGERR_setLineNum(context, getLine(this), getFile(this));
 				CGERR_showAllMsg(context);
 				context.builder->CreateRet(Constant::getNullValue(function->getReturnType()));
 			}

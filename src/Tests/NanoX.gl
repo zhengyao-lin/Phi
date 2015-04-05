@@ -199,25 +199,27 @@ int TCSANOW = 0;
 void
 set_keypress(void)
 {
-	struct termios new_settings;
+	/*struct termios new_settings;
 
 	tcgetattr(0, &stored_settings);
 
 	new_settings = stored_settings;
 
-	/* Disable canonical mode, and set buffer size to 1 byte */
 	new_settings.c_lflag &= (~0000002);
 	new_settings.c_cc[VTIME] = 0;
 	new_settings.c_cc[VMIN] = 1;
 
-	tcsetattr(0, TCSANOW, &new_settings);
+	tcsetattr(0, TCSANOW, &new_settings);*/
+
+	system("stty raw -echo");
 	return;
 }
 
 void
 reset_keypress(void)
 {
-	tcsetattr(0, TCSANOW, &stored_settings);
+	//tcsetattr(0, TCSANOW, &stored_settings);
+	system("stty -raw echo");
 	return;
 }
 
@@ -225,16 +227,17 @@ void stp()
 {
 	char c;
 
-	system("stty raw -echo");
+	set_keypress();
 	while (1) {
 		c = getchar();
 
-		system("stty -raw echo");
+		reset_keypress();
 		if (c == 'q') {
 			return;
 		}
+
 		refreshScreen();
-		system("stty raw -echo");
+		set_keypress();
 	}
 
 	return;

@@ -6,11 +6,12 @@
     #include <cstdlib>
 	#include <cstring>
 	#include <map>
-	#define SETLINE(p) ((p)->lineno = current_line_number)
+	#define SETLINE(p) ((p)->lineno = current_line_number, (p)->file_name = current_file)
 
 	extern Parser *main_parser;
 	extern CodeGenContext *global_context;
 	std::map<std::string, int> type_def;
+	char *current_file = "<no_name>";
 
 	void
 	ASTERR_Undefined_Syntax_Error(const char *token) {
@@ -966,6 +967,9 @@ assignment_expression
 
 expression
 	: assignment_expression
+	{
+		SETLINE($$);
+	}
 	;
 
 expression_list
