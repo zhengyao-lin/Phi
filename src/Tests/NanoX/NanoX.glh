@@ -18,9 +18,15 @@ extern int system(char *s);
 extern int tcgetattr (int __fd, struct termios *__termios_p);
 extern int tcsetattr (int __fd, int __optional_actions, struct termios *__termios_p);
 
-typedef char	cc_t;
-typedef int	speed_t;
-typedef int	tcflag_t;
+typedef char cc_t;
+typedef int speed_t;
+typedef int tcflag_t;
+
+struct Rectangle {
+	int height;
+	int width;
+	char material;
+};
 
 struct winsize
 {
@@ -28,13 +34,6 @@ struct winsize
 	int:16 ws_col;
 	int:16 ws_xpixel;
 	int:16 ws_ypixel;
-};
-
-struct Rectangle
-{
-	int height;
-	int width;
-	char material;
 };
 
 struct termios {
@@ -45,3 +44,18 @@ struct termios {
 	cc_t c_line;			/* line discipline */
 	cc_t c_cc[NINETEEN];		/* control characters */
 };
+
+char *strlen(char *str);
+int getLines();
+int getCols();
+int initTerminal();
+int refreshScreen();
+int setBackground();
+int setForeground();
+int setDefault();
+int printStr(char *str, int line, int col);
+int printHCent(char *str, int line); // horizontal
+int printVCent(char *str, int col); // vertical
+int drawRect1(int line1, int col1, int line2, int col2, char material);
+int drawRect2(struct Rectangle rect, int x, int y);
+struct Rectangle getRect(int height, int width, char material);

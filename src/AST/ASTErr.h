@@ -8,6 +8,7 @@ using namespace std;
 extern int yylex();
 extern char *yytext;
 extern int current_line_number;
+extern char *current_file;
 static ErrorMessage error_messages;
 
 inline void
@@ -28,6 +29,7 @@ inline void
 ASTERR_setLineNumber(void)
 {
 	error_messages.setTopLineNumber(current_line_number);
+	error_messages.setTopFileName(current_file);
 	return;
 }
 

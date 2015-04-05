@@ -2,6 +2,8 @@ TARGET = testbed
 OBJS = Grammar/Grammar.o \
 	   CodeGen/CodeGen.o \
 	   ErrorMsg/ErrorMsg.o \
+	   IO/IO.o \
+	   Lib/Lib.o \
 	   main.o
 
 LLVMCONFIG = llvm-config
@@ -31,8 +33,16 @@ CodeGen/CodeGen.o:
 ErrorMsg/ErrorMsg.o:
 	cd ErrorMsg; $(MAKE)
 
+IO/IO.o:
+	cd IO; $(MAKE)
+
+Lib/Lib.o:
+	cd Lib; $(MAKE)
+
 clean:
 	cd Grammar; $(MAKE) clean
 	cd CodeGen; $(MAKE) clean
 	cd ErrorMsg; $(MAKE) clean
+	cd IO; $(MAKE) clean
+	cd Lib; $(MAKE) clean
 	$(RM) -rf *.o *.ll $(TARGET) testval

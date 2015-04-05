@@ -1,175 +1,8 @@
 #include "NanoX.glh"
 
-int _cols = 0;
-int _lines = 0;
-char **_screen = 0;
-
-char *
-strlen(char *str)
-{
-	int ret = 0;
-	while(str[ret] != '\0') ret++;
-	return ret;
-}
-
-int getScreenCols()
-{
-	struct winsize win_size;
-	ioctl(STDIN_FILENO, TIOCGWINSZ, &win_size);
-	return win_size.ws_col;
-}
-
-int getScreenLines()
-{
-	struct winsize win_size;
-	ioctl(STDIN_FILENO, TIOCGWINSZ, &win_size);
-	return win_size.ws_row;
-}
-
-int initTerminal()
-{
-	int i = 0;
-	_cols = getScreenCols();
-	_lines = getScreenLines();
-	_screen = malloc(sizeof(char *) * _lines);
-
-	while (i < _lines) {
-		_screen[i] = malloc(sizeof(char) * _cols);
-		memset(_screen[i], ' ', sizeof(char) * _cols);
-		i++;
-	}
-
-	return 0;
-}
-
-int refreshScreen()
-{
-	int x = 0;
-	int y = 0;
-
-	while (y < _lines) {
-		printf("\n");
-		while (x < _cols) {
-			printf("%c", _screen[y][x]);
-			x++;
-		}
-		x = 0;
-		y++;
-	}
-}
-
-int setBackground()
-{
-	return printf(BG_IVORY);
-}
-
-int setForeground()
-{
-	return printf(FG_BLACK);
-}
-
-int setDefault()
-{
-	int i = 0;
-	printf(BG_DEFAULT);
-
-	while (i < _lines) {
-		memset(_screen[i], ' ', sizeof(char) * _cols);
-		i++;
-	}
-	refreshScreen();
-
-	return 0;
-}
-
-int printStr(char *str, int line, int col)
-{
-	memcpy(&_screen[line][col], str, strlen(str));
-	refreshScreen();
-
-	return 0;
-}
-
-int printHCent(char *str, int line) // horizontal
-{
-	return printStr(str, line, (_cols - strlen(str)) / 2);
-}
-
-int printVCent(char *str, int col) // vertical
-{
-	return printStr(str, _lines / 2 - 1, col);
-}
-
-int drawRect1(int line1, int col1, int line2, int col2, char material)
-{
-	int x1 = col1;
-	int x2 = col2;
-	int y1 = line1;
-	int y2 = line2;
-
-	while (x1 != x2) {
-		_screen[y1][x1] = material;
-		_screen[y2][x1] = material;
-		if (x1 > x2) {
-			x1--;
-		} else {
-			x1++;
-		}
-	}
-	x1 = col1;
-
-	while (y1 != y2) {
-		_screen[y1][x1] = material;
-		_screen[y1][x2] = material;
-		if (y1 > y2) {
-			y1--;
-		} else {
-			y1++;
-		}
-	}
-	_screen[y2][x2] = material;
-
-	refreshScreen();
-
-	return 0;
-}
-
-int drawRect2(struct Rectangle rect, int x, int y)
-{
-	return drawRect1(y, x, y + rect.height, x + rect.width, rect.material);
-}
-
-struct Rectangle getRect(int height, int width, char material)
-{
-	struct Rectangle ret;
-
-	ret.height = height;
-	ret.width = width;
-	ret.material = material;
-
-	return ret;
-}
-
-static struct termios stored_settings;
-int VTIME = 5;
-int VMIN = 6;
-int TCSANOW = 0;
-
 void
 set_keypress(void)
 {
-	/*struct termios new_settings;
-
-	tcgetattr(0, &stored_settings);
-
-	new_settings = stored_settings;
-
-	new_settings.c_lflag &= (~0000002);
-	new_settings.c_cc[VTIME] = 0;
-	new_settings.c_cc[VMIN] = 1;
-
-	tcsetattr(0, TCSANOW, &new_settings);*/
-
 	system("stty raw -echo");
 	return;
 }
@@ -177,7 +10,6 @@ set_keypress(void)
 void
 reset_keypress(void)
 {
-	//tcsetattr(0, TCSANOW, &stored_settings);
 	system("stty -raw echo");
 	return;
 }
@@ -187,17 +19,16 @@ void stp()
 	char c;
 
 	set_keypress();
-	while (1) {
-		c = getchar();
-
-		reset_keypress();
+	while (c = getchar()) {
 		if (c == 'q') {
-			return;
+			goto BREAK;
 		}
-
+		reset_keypress();
 		refreshScreen();
 		set_keypress();
 	}
+	BREAK:
+	reset_keypress();
 
 	return;
 }
@@ -213,7 +44,8 @@ int main()
 
 	printStr("Welcome", 5, 7);
 	printStr("Press 'q' to exit", 6, 7);
-	drawRect2(getRect(20, 40, '\''), 0, 0);
+	drawRect2(getRect(getLines() - 1, getCols() - 1, ' '), 0, 0);
+	drawRect2(getRect(10, 30, '\''), 2, 2);
 	refreshScreen();
 	//refreshScreen();
 	stp();

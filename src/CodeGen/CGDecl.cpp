@@ -342,14 +342,13 @@ NTypedefDecl::codeGen(CodeGenContext& context)
 CGValue
 NFunctionDecl::codeGen(CodeGenContext& context)
 {
-	vector<Type*> arg_types;
 	FunctionType *ftype;
 	Function *function;
 	BasicBlock *bblock;
 	Function::arg_iterator arg_it;
 	ParamList::const_iterator param_it;
 	DeclSpecifier::const_iterator decl_spec_it;
-	vector<Type*>::const_iterator param_type_it;
+	FunctionType::param_iterator param_type_it;
 	Type *ret_type;
 	DeclInfo *decl_info_tmp;
 	DeclInfo *main_decl_info;
@@ -371,18 +370,18 @@ NFunctionDecl::codeGen(CodeGenContext& context)
 		function = Function::Create(ftype, specifiers->linkage,
 									context.formatName(main_decl_info->id->name), context.module);
 	} else {
-		for (param_type_it = arg_types.begin(), arg_it = function->arg_begin();
-			 param_type_it != arg_types.end() && arg_it != function->arg_end();
+		for (param_type_it = ftype->param_begin(), arg_it = function->arg_begin();
+			 param_type_it != ftype->param_end() && arg_it != function->arg_end();
 			 param_type_it++, arg_it++) {
-			if (isSameType(*param_type_it, arg_it->getType())) {
+			if (*param_type_it == arg_it->getType()) {
 				continue;
 			}
 			break;
 		}
 
-		if (param_type_it != arg_types.end()
+		if (param_type_it != ftype->param_end()
 			|| arg_it != function->arg_end()) {
-			CGERR_Conflicting_Type(context, main_decl_info->id->name.c_str(), param_type_it - arg_types.begin() + 1);
+			CGERR_Conflicting_Type(context, main_decl_info->id->name.c_str(), param_type_it - ftype->param_begin() + 1);
 			CGERR_setLineNum(context, getLine(this), getFile(this));
 			CGERR_showAllMsg(context);
 			return CGValue();

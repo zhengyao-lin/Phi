@@ -4,6 +4,7 @@
 #include "Node.h"
 #include <stdio.h>
 #include <string.h>
+#include <map>
 class CodeGenContext;
 class Parser;
 
@@ -73,6 +74,9 @@ public:
 			free(*decl_it);
 		}
 		delete extern_decls;
+
+		extern std::map<std::string, int> type_def;
+		type_def.erase(type_def.begin(), type_def.end());
 	}
 };
 

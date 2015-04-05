@@ -4,3 +4,6 @@ int main()
 {
 	return RET_VAL;
 }
+
+extern int system(char *s);
+typedef char cc_t;
