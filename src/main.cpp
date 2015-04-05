@@ -2,6 +2,8 @@
 #include <fstream>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
+#include <time.h>
 #include "CodeGen/CGAST.h"
 #include "AST/Node.h"
 #include "AST/Parser.h"
@@ -47,6 +49,7 @@ public:
 		TargetExe
 	};
 	std::map<std::string, ArgumentType> ARG_MAP;
+	vector<string> tmp_file_paths;
 
 	void initMap()
 	{
@@ -90,6 +93,13 @@ public:
 
 	virtual ~IOSetting()
 	{
+		vector<string>::const_iterator tmp_it;
+		for (tmp_it = tmp_file_paths.begin();
+			 tmp_it != tmp_file_paths.end(); tmp_it++) {
+			if (isFileExist(*tmp_it)) {
+				remove(tmp_it->c_str());
+			}
+		}
 	}
 
 	ArgumentType getArg(char *arg)
@@ -101,19 +111,81 @@ public:
 		return Unknown;
 	}
 
+	bool isFileExist(string path)
+	{
+		FILE *fp = fopen(path.c_str(), "r");
+		if (!fp) {
+			return false;
+		}
+		fclose(fp);
+		return true;
+	}
+
+	string getRandomString(int length)
+	{
+		int flag, i;
+		string ret_str;
+		srand(time(NULL));
+	  
+		for (i = 0; i < length - 1; i++)
+		{
+		    flag = rand() % 3;
+		    switch (flag)
+		    {
+		        case 0:
+		            ret_str += 'A' + rand() % 26;
+		            break;
+		        case 1:
+		            ret_str += 'a' + rand() % 26;
+		            break;
+		        case 2:
+		            ret_str += '0' + rand() % 10;
+		            break;
+		        default:
+		            ret_str += 'x';
+		            break;
+		    }
+		}
+		return ret_str;
+	}
+
+	string getTempFilePath()
+	{
+		string file_name = "/tmp/." + getRandomString(16);
+		while (isFileExist(file_name + ".tmp")) {
+			file_name += ".0";
+		}
+
+		return file_name + ".tmp";
+	}
+
+	string doPreprocess(string file_path)
+	{
+		string tmp_file_path = getTempFilePath();
+		string cmd = "gcc -x c " + file_path + " -E >> " + tmp_file_path;
+		tmp_file_paths.push_back(tmp_file_path);
+		int status = system(cmd.c_str());
+		if (status) {
+			delete this;
+			exit(status);
+		}
+
+		return tmp_file_path;
+	}
+
 	void applySetting()
 	{
 		extern char *current_file;
 		extern FILE *yyin;
 		if (hasInput()) {
 			current_file = strdup(input_file.c_str());
-			yyin = fopen(input_file.c_str(), "r");
+			yyin = fopen(doPreprocess(input_file).c_str(), "r");
 			if (!yyin) {
 				ErrorMessage::tmpError("Cannot find source file: " + input_file);
 			}
 		} else {
-			current_file = "<STD_IN>";
-			yyin = stdin;
+			delete this;
+			exit(0);
 		}
 	}
 
@@ -192,6 +264,7 @@ public:
 			tool_output_file output_file(tmp_output_name.c_str(), error_msg, sys::fs::F_None);
 			if (!error_msg.empty()) {
 				cerr << error_msg << endl;
+				delete this;
 				exit(1);
 				return;
 			}
@@ -203,6 +276,7 @@ public:
 									sys::getDefaultTargetTriple(), error_str);
 			if (target == NULL) {
 				cout << error_str << endl;
+				delete this;
 				exit(1);
 				return;
 			}
@@ -250,11 +324,12 @@ public:
 						 + (getObject().empty()
 							? "a.out"
 							: getObject());
+			tmp_file_paths.push_back(tmp_output_name);
 			int status = system(cmd.c_str());
 			if (status) {
-				exit(1);
+				delete this;
+				exit(status);
 			}
-			system(("rm -rf " + tmp_output_name).c_str());
 		}
 	}
 };
