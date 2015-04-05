@@ -8,6 +8,8 @@ doClean()
 {
 	remove("NanoX.o");
 	remove("Screen.o");
+	remove("Element.o");
+	remove("NanoX");
 	return;
 }
 
@@ -15,7 +17,11 @@ int main(int argc, char **argv)
 {
 	glmake_toObject("NanoX.gl");
 	glmake_toObject("Screen.gl");
-	system("gcc NanoX.o Screen.o -o NanoX");
+	glmake_toObject("Element.gl");
+	system("gcc NanoX.o Screen.o Element.o -o NanoX");
+
+	system("./NanoX");
+
 	doClean();
 	return;
 }

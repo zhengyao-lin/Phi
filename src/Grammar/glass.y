@@ -792,7 +792,7 @@ unary_expression
 
 cast_expression
 	: unary_expression
-	| TLPAREN type_specifier TRPAREN cast_expression
+	| TLPAREN ex_type_specifier TRPAREN cast_expression
 	{
 		$$ = new NPrefixExpr(*$2, *$4);
 		SETLINE($$);

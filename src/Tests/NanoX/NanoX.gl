@@ -1,4 +1,6 @@
-#include "NanoX.glh"
+#include "Screen.glh"
+#include "Element.glh"
+#include "General.glh"
 
 void
 set_keypress(void)
@@ -35,7 +37,7 @@ void stp()
 
 int main()
 {
-	struct Rectangle rect;
+	Rectangle *rect;
 
 	initTerminal();
 
@@ -47,7 +49,6 @@ int main()
 	drawRect2(getRect(getLines() - 1, getCols() - 1, ' '), 0, 0);
 	drawRect2(getRect(10, 30, '\''), 2, 2);
 	refreshScreen();
-	//refreshScreen();
 	stp();
 
 	setDefault();

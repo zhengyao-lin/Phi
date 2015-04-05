@@ -1,16 +1,10 @@
-#include "NanoX.glh"
+#include "Screen.glh"
+#include "Element.glh"
+#include "General.glh"
 
 static int _cols = 0;
 static int _lines = 0;
 static char **_screen = 0;
-
-char *
-strlen(char *str)
-{
-	int ret = 0;
-	while(str[ret] != '\0') ret++;
-	return ret;
-}
 
 int getLines() { return _lines; }
 int getCols() { return _cols; }
@@ -59,6 +53,8 @@ int refreshScreen()
 		x = 0;
 		y++;
 	}
+
+	return 0;
 }
 
 int setBackground()
@@ -135,20 +131,4 @@ int drawRect1(int line1, int col1, int line2, int col2, char material)
 	refreshScreen();
 
 	return 0;
-}
-
-int drawRect2(struct Rectangle rect, int x, int y)
-{
-	return drawRect1(y, x, y + rect.height, x + rect.width, rect.material);
-}
-
-struct Rectangle getRect(int height, int width, char material)
-{
-	struct Rectangle ret;
-
-	ret.height = height;
-	ret.width = width;
-	ret.material = material;
-
-	return ret;
 }

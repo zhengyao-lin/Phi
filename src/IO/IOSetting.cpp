@@ -21,17 +21,6 @@ IOSetting::getArg(char *arg)
 	return Unknown;
 }
 
-bool
-IOSetting::isFileExist(string path)
-{
-	FILE *fp = fopen(path.c_str(), "r");
-	if (!fp) {
-		return false;
-	}
-	fclose(fp);
-	return true;
-}
-
 string
 IOSetting::getRandomString(int length)
 {
@@ -77,7 +66,7 @@ IOSetting::doPreprocess(string file_path)
 {
 	string tmp_file_path = getTempFilePath();
 	string cmd = "gcc -x c " + file_path + " -E >> " + tmp_file_path;
-	tmp_file_paths.push_back(tmp_file_path);
+	tmp_file_paths->push_back(tmp_file_path);
 	int status = system(cmd.c_str());
 	if (status) {
 		delete this;
@@ -181,7 +170,7 @@ IOSetting::doOutput(Module *mod)
 			if (input_file.empty()) {
 				tmp_output_name = "tmp.ll";
 			} else {
-				tmp_output_name = getFileName(string(basename(input_file.c_str()))) + ".ll";
+				tmp_output_name = getFileName(input_file) + ".ll";
 			}
 		}
 
@@ -220,9 +209,9 @@ IOSetting::doOutput(Module *mod)
 				}
 			} else {
 				if (targetObj() || targetExe()) {
-					tmp_output_name = getFileName(string(basename(input_file.c_str()))) + ".o";
+					tmp_output_name = getFileName(input_file) + ".o";
 				} else {
-					tmp_output_name = getFileName(string(basename(input_file.c_str()))) + ".s";
+					tmp_output_name = getFileName(input_file) + ".s";
 				}
 			}
 		} else if (targetExe()) {
@@ -230,7 +219,7 @@ IOSetting::doOutput(Module *mod)
 		}
 
 		string error_str2;
-		tool_output_file ouput_tool(tmp_output_name.c_str(), error_str2, sys::fs::F_Excl);
+		tool_output_file ouput_tool(tmp_output_name.c_str(), error_str2, sys::fs::F_None);
 		if (!error_str2.empty()) {
 			cout << error_str2 << endl;
 			return;
@@ -249,7 +238,7 @@ IOSetting::doOutput(Module *mod)
 					 + (getObject().empty()
 						? "a.out"
 						: getObject());
-		tmp_file_paths.push_back(tmp_output_name);
+		tmp_file_paths->push_back(tmp_output_name);
 		int status = system(cmd.c_str());
 		if (status) {
 			delete this;

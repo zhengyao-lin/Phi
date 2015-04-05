@@ -1,13 +1,13 @@
-#define NINETEEN 19
+#ifndef _GENERAL_H_
+#define _GENERAL_H_
+
 #define STDIN_FILENO 0
 #define TIOCGWINSZ 0x5413
-
-#define BG_DEFAULT "\033[0m"
-#define BG_IVORY "\033[47m"
-#define FG_BLACK "\033[30m"
+#define NULL ((void *)0)
 
 extern int printf(char *str, ...);
 extern int sprintf(char *dest, char *str, ...);
+extern char *strlen(char *str);
 extern void free(void *ptr);
 extern char *malloc(int:64 size);
 extern int ioctl(int fd, int cmd, ...);
@@ -18,16 +18,6 @@ extern int system(char *s);
 extern int tcgetattr (int __fd, struct termios *__termios_p);
 extern int tcsetattr (int __fd, int __optional_actions, struct termios *__termios_p);
 
-typedef char cc_t;
-typedef int speed_t;
-typedef int tcflag_t;
-
-struct Rectangle {
-	int height;
-	int width;
-	char material;
-};
-
 struct winsize
 {
 	int:16 ws_row;
@@ -36,26 +26,17 @@ struct winsize
 	int:16 ws_ypixel;
 };
 
+typedef char cc_t;
+typedef int speed_t;
+typedef int tcflag_t;
+
 struct termios {
 	tcflag_t c_iflag;		/* input mode flags */
 	tcflag_t c_oflag;		/* output mode flags */
 	tcflag_t c_cflag;		/* control mode flags */
 	tcflag_t c_lflag;		/* local mode flags */
 	cc_t c_line;			/* line discipline */
-	cc_t c_cc[NINETEEN];		/* control characters */
+	cc_t c_cc[19];	/* control characters */
 };
 
-char *strlen(char *str);
-int getLines();
-int getCols();
-int initTerminal();
-int refreshScreen();
-int setBackground();
-int setForeground();
-int setDefault();
-int printStr(char *str, int line, int col);
-int printHCent(char *str, int line); // horizontal
-int printVCent(char *str, int col); // vertical
-int drawRect1(int line1, int col1, int line2, int col2, char material);
-int drawRect2(struct Rectangle rect, int x, int y);
-struct Rectangle getRect(int height, int width, char material);
+#endif

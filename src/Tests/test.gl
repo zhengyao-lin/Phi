@@ -1,8 +1,4 @@
-extern int printf(char *str, ...);
-extern int sprintf(char *dest, char *str, ...);
-extern void free(void *ptr);
-extern char *malloc(int:64 size);
-
+#include "stds.h"
 char global1[20] = "adsss";
 
 typedef struct TT_tag {

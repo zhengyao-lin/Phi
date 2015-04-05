@@ -1,6 +1,4 @@
-extern int printf(char *str, ...);
-extern void memset(void *ptr, int value, int:64 size);
-extern void *malloc(int:64 size);
+#include "stds.h"
 
 /*typedef struct VM_tag {
 	int i;

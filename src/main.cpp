@@ -25,12 +25,28 @@ using namespace std;
 extern FILE *yyin;
 Parser *main_parser = NULL;
 CodeGenContext *global_context;
+vector<string> *tmp_file_paths = NULL;
+
+__attribute__ ((destructor))
+void delete_tmp()
+{
+	vector<string>::const_iterator tmp_it;
+	for (tmp_it = tmp_file_paths->begin();
+		 tmp_it != tmp_file_paths->end(); tmp_it++) {
+		if (isFileExist(*tmp_it)) {
+			remove(tmp_it->c_str());
+		}
+	}
+
+	return;
+}
 
 int main(int argc, char **argv)
 {
 	PassManager pm;
 	TargetMachine::CodeGenFileType output_file_type;
 
+	tmp_file_paths = new vector<string>();
 	global_context = new CodeGenContext();
 	main_parser = new Parser();
 	IOSetting *settings = new IOSetting(argc, argv);

@@ -28,6 +28,19 @@
 using namespace std;
 using namespace llvm;
 
+extern vector<string> *tmp_file_paths;
+
+inline bool
+isFileExist(string path)
+{
+	FILE *fp = fopen(path.c_str(), "r");
+	if (!fp) {
+		return false;
+	}
+	fclose(fp);
+	return true;
+}
+
 class IOSetting
 {
 	bool target_asm = false;
@@ -48,7 +61,6 @@ public:
 		TargetExe
 	};
 	std::map<std::string, ArgumentType> ARG_MAP;
-	vector<string> tmp_file_paths;
 
 	void initMap();
 
@@ -84,18 +96,16 @@ public:
 
 	virtual ~IOSetting()
 	{
-		vector<string>::const_iterator tmp_it;
-		for (tmp_it = tmp_file_paths.begin();
-			 tmp_it != tmp_file_paths.end(); tmp_it++) {
+		/*vector<string>::const_iterator tmp_it;
+		for (tmp_it = tmp_file_paths->begin();
+			 tmp_it != tmp_file_paths->end(); tmp_it++) {
 			if (isFileExist(*tmp_it)) {
 				remove(tmp_it->c_str());
 			}
-		}
+		}*/
 	}
 
 	ArgumentType getArg(char *arg);
-
-	bool isFileExist(string path);
 
 	string getRandomString(int length);
 
