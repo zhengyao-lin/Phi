@@ -1,3 +1,5 @@
+#define NULL ((void *)0)
+
 extern int printf(char *str, ...);
 extern int sprintf(char *dest, char *str, ...);
 extern void *malloc(int:64 size);

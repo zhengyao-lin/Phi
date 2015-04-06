@@ -176,17 +176,76 @@ doBinaryCast(CodeGenContext& context, Value* &lhs, Value* &rhs)
 	return;
 }
 
+#define setBlock(b) (context.pushBlock(b), \
+					 context.builder->SetInsertPoint(context.currentBlock()))
+
+static Value *
+emitLogicalExpr(CodeGenContext& context, NExpression &lval, NExpression &rval, bool is_or)
+{
+	Value *lhs;
+	Value *rhs;
+	BasicBlock *lhs_true;
+	BasicBlock *lhs_end;
+	BasicBlock *orig_block;
+	PHINode *phi_node;
+
+	lhs = context.builder->CreateIsNotNull(lval.codeGen(context));
+	orig_block = context.currentBlock();
+
+	lhs_true = BasicBlock::Create(getGlobalContext(), "", orig_block->getParent(),
+								  context.current_end_block);
+	lhs_end = BasicBlock::Create(getGlobalContext(), "", orig_block->getParent(),
+								 context.current_end_block);
+
+	if (is_or) {
+		context.builder->CreateCondBr(lhs, lhs_end, lhs_true);
+	} else {
+		context.builder->CreateCondBr(lhs, lhs_true, lhs_end);
+	}
+
+	setBlock(lhs_true);
+
+	rhs = context.builder->CreateIsNotNull(rval.codeGen(context));
+	context.builder->CreateBr(lhs_end);
+
+	setBlock(lhs_end);
+	phi_node = context.builder->CreatePHI(context.builder->getInt1Ty(), 2);
+
+	phi_node->addIncoming(context.builder->getInt1(is_or), orig_block);
+	phi_node->addIncoming(rhs, lhs_true);
+
+	return phi_node;
+}
+
+inline bool
+pointerAllowedExpr(int op)
+{
+	switch (op) {
+		case TADD:
+		case TSUB:
+			return true;
+	}
+	return false;
+}
+
 CGValue
 NBinaryExpr::codeGen(CodeGenContext& context)
 {
 	Value *lhs;
 	Value *rhs;
 
+	if (op == TLAND) {
+		return CGValue(emitLogicalExpr(context, lval, rval, false));
+	} else if (op == TLOR) {
+		return CGValue(emitLogicalExpr(context, lval, rval, true));
+	}
+
 	lhs = lval.codeGen(context);
 	rhs = rval.codeGen(context);
 
 	if ((lhs->getType()->isPointerTy() || lhs->getType()->isArrayTy())
-		&& rhs->getType()->isIntegerTy()) {
+		&& rhs->getType()->isIntegerTy()
+		&& pointerAllowedExpr(op)) {
 		rhs = NAssignmentExpr::doAssignCast(context, rhs, Type::getInt64Ty(getGlobalContext()), NULL,
 											getLine(this), getFile(this));
 		if (op == TSUB) {
@@ -215,12 +274,6 @@ NBinaryExpr::codeGen(CodeGenContext& context)
 	doBinaryCast(context, lhs, rhs);
 
 	switch (op) {
-		case TLOR:
-			return CGValue(context.builder->CreateOr(context.builder->CreateIsNotNull(lhs, ""),
-											  context.builder->CreateIsNotNull(rhs, ""), ""));
-		case TLAND:
-			return CGValue(context.builder->CreateAnd(context.builder->CreateIsNotNull(lhs, ""),
-											   context.builder->CreateIsNotNull(rhs, ""), ""));
 		case TOR:
 			return CGValue(context.builder->CreateOr(lhs, rhs, ""));	
 		case TXOR:
