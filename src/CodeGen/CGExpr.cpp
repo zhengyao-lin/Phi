@@ -746,17 +746,22 @@ NFieldExpr::codeGen(CodeGenContext& context)
 
 	if (!struct_type->getStructName().substr(0, strlen(UNION_PREFIX)).compare(UNION_PREFIX)) { // prefix is "union." ?
 		is_union_flag = true;
-		if (context.getUnion(struct_type->getStructName())) {
-			union_map = *context.getUnion(struct_type->getStructName());
-		} else {
-			abort();
+		if (!context.getUnion(struct_type->getStructName())) {
+			CGERR_Invalid_Use_Of_Incompelete_Type(context, struct_type->getStructName().str().c_str());
+			CGERR_setLineNum(context, getLine(this), getFile(this));
+			CGERR_showAllMsg(context);
+			return CGValue();
 		}
+		union_map = *context.getUnion(struct_type->getStructName());
 	} else {
-		if (context.getStruct(struct_type->getStructName())) {
-			map = *context.getStruct(struct_type->getStructName());
-		} else {
-			abort();
+		if (!context.getStruct(struct_type->getStructName())) {
+			CGERR_Invalid_Use_Of_Incompelete_Type(context, struct_type->getStructName().str().c_str());
+			CGERR_setLineNum(context, getLine(this), getFile(this));
+			CGERR_showAllMsg(context);
+			return CGValue();
 		}
+
+		map = *context.getStruct(struct_type->getStructName());
 	}
 
 	if (is_union_flag) {

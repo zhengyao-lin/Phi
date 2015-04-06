@@ -354,4 +354,20 @@ CGERR_Invalid_Use_Of_Void(CodeGenContext& context)
 	return;
 }
 
+inline void
+CGERR_Invalid_Use_Of_Incompelete_Type(CodeGenContext& context, const char *name)
+{
+	context.messages.newMessage(new ErrorInfo(ErrorInfo::Error, true, ErrorInfo::Exit1,
+											  "Invalid use of incompelete type \"$(name)\"", name));
+	return;
+}
+
+inline void
+CGERR_Missing_Main_Function(CodeGenContext& context)
+{
+	context.messages.newMessage(new ErrorInfo(ErrorInfo::Warning, true, ErrorInfo::NoAct,
+											  "The function named \"main\" is missing, exiting..."));
+	return;
+}
+
 #endif

@@ -5,19 +5,21 @@
 #define BG_IVORY "\033[47m"
 #define FG_BLACK "\033[30m"
 
-int getLines();
-int getCols();
-int initTerminal();
-int refreshScreen();
+namespace Screen {
+	int getLines();
+	int getCols();
+	int initTerminal();
+	int refreshScreen();
 
-int setBackground();
-int setForeground();
-int setDefault();
+	int setBackground();
+	int setForeground();
+	int setDefault();
 
-int printStr(char *str, int line, int col);
-int printHCent(char *str, int line); // horizontal
-int printVCent(char *str, int col); // vertical
+	int printStr(char *str, int line, int col);
+	int printHCent(char *str, int line); // horizontal
+	int printVCent(char *str, int col); // vertical
 
-int drawRect1(int line1, int col1, int line2, int col2, char material);
+	int drawRect1(int line1, int col1, int line2, int col2, char material);
+}
 
 #endif

@@ -16,20 +16,20 @@ static Type *typeOf(CodeGenContext &context, const NIdentifier& type)
 
 	if (context.getType(STRUCT_PREFIX + type.name)) {
 		CGERR_Suppose_To_Be_Struct_Type(context, type.name.c_str());
-		CGERR_setLineNum(context, getLine(&type), getFile(&type));
+		CGERR_setLineNum(context, type.lineno, type.file_name);
 		CGERR_showAllMsg(context);
 		return NULL;
 	}
 
 	if (context.getType(UNION_PREFIX + type.name)) {
 		CGERR_Suppose_To_Be_Union_Type(context, type.name.c_str());
-		CGERR_setLineNum(context, getLine(&type), getFile(&type));
+		CGERR_setLineNum(context, type.lineno, type.file_name);
 		CGERR_showAllMsg(context);
 		return NULL;
 	}
 
 	CGERR_Unknown_Type_Name(context, type.name.c_str());
-	CGERR_setLineNum(context, getLine(&type), getFile(&type));
+	CGERR_setLineNum(context, type.lineno, type.file_name);
 	CGERR_showAllMsg(context);
 
 	return NULL;

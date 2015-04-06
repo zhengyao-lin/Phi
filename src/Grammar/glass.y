@@ -254,9 +254,21 @@ function_arguments
 
 type_specifier
 	: identifier_type
+	{
+		SETLINE($1);
+	}
 	| struct_type
+	{
+		SETLINE($1);
+	}
 	| union_type
+	{
+		SETLINE($1);
+	}
 	| bitfield_type
+	{
+		SETLINE($1);
+	}
 	| TTYPEOF unary_expression
 	{
 		$$ = new NTypeof(*$2);
@@ -700,6 +712,7 @@ primary_expression
 	: identifier
 	{
 		$$ = $<expression>1;
+		SETLINE($$);
 	}
 	| numeric
 	| string_literal

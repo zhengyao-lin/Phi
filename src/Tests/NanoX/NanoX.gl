@@ -26,7 +26,7 @@ void stp()
 			goto BREAK;
 		}
 		reset_keypress();
-		refreshScreen();
+		Screen::refreshScreen();
 		set_keypress();
 	}
 	BREAK:
@@ -37,21 +37,23 @@ void stp()
 
 int main()
 {
-	Rectangle *rect;
+	Elements::Rectangle *rect;
 
-	initTerminal();
+	Screen::initTerminal();
 
-	setBackground();
-	setForeground();
+	Screen::setBackground();
+	Screen::setForeground();
 
-	printStr("Welcome", 5, 7);
-	printStr("Press 'q' to exit", 6, 7);
-	drawRect2(getRect(getLines() - 1, getCols() - 1, ' '), 0, 0);
-	drawRect2(getRect(10, 30, '\''), 2, 2);
-	refreshScreen();
+	Screen::printStr("Welcome", 5, 7);
+	Screen::printStr("Press 'q' to exit", 6, 7);
+	Elements::drawRect2(Elements::getRect(Screen::getLines() - 1,
+										  Screen::getCols() - 1, ' '),
+						0, 0);
+	Elements::drawRect2(Elements::getRect(10, 30, '\''), 2, 2);
+	Screen::refreshScreen();
 	stp();
 
-	setDefault();
+	Screen::setDefault();
 
 	return 0;
 }

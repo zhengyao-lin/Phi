@@ -23,6 +23,11 @@ GenericValue CodeGenContext::runCode()
 	std::cout << "Running code...\n";
 
 	mainFunction = module->getFunction(MAIN_FUNCTOIN_NAME);
+	if (!mainFunction) {
+		CGERR_Missing_Main_Function(*this);
+		CGERR_showAllMsg(*this);
+		return v;
+	}
 	ee = EngineBuilder(module).create();
 	v = ee->runFunction(mainFunction, noargs);
 

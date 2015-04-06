@@ -217,6 +217,16 @@ NStructDecl::codeGen(CodeGenContext& context)
 			return CGValue();
 		}
 		struct_type = dyn_cast<StructType>(context.getType(real_name));
+	} if (context.getType(STRUCT_PREFIX + id.name)) {
+		real_name = STRUCT_PREFIX + id.name;
+		if (context.getStruct(real_name)
+			&& fields) { // redefinition
+			CGERR_Redefinition_Of_Struct(context, id.name.c_str());
+			CGERR_setLineNum(context, getLine(this), getFile(this));
+			CGERR_showAllMsg(context);
+			return CGValue();
+		}
+		struct_type = dyn_cast<StructType>(context.getType(real_name));
 	} else {
 		struct_type = StructType::create(getGlobalContext(), real_name);
 		context.setType(real_name, struct_type);
@@ -271,6 +281,16 @@ NUnionDecl::codeGen(CodeGenContext& context)
 	string real_name = UNION_PREFIX + context.formatName(id.name);
 
 	if (context.getType(real_name)) {
+		if (context.getUnion(real_name)
+			&& fields) { // redefinition
+			CGERR_Redefinition_Of_Union(context, id.name.c_str());
+			CGERR_setLineNum(context, getLine(this), getFile(this));
+			CGERR_showAllMsg(context);
+			return CGValue();
+		}
+		union_type = dyn_cast<StructType>(context.getType(real_name));
+	} if (context.getType(UNION_PREFIX + id.name)) {
+		real_name = UNION_PREFIX + id.name;
 		if (context.getUnion(real_name)
 			&& fields) { // redefinition
 			CGERR_Redefinition_Of_Union(context, id.name.c_str());

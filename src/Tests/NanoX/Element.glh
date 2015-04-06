@@ -1,25 +1,27 @@
 #ifndef _NANOX_H_
 #define _NANOX_H_
 
-typedef struct Rectangle_tag {
-	int height;
-	int width;
-	char material;
-} Rectangle;
+namespace Elements {
+	typedef struct Rectangle_tag {
+		int height;
+		int width;
+		char material;
+	} Rectangle;
 
-typedef struct Element_tag {
-	union {
-		void *anon;
-		Rectangle *rect;
-	} u;
+	typedef struct Element_tag {
+		union {
+			void *anon;
+			Rectangle *rect;
+		} u;
 
-	struct Element_tag *prev;
-	struct Element_tag *next;
-} Element;
+		struct Element_tag *prev;
+		struct Element_tag *next;
+	} Element;
 
-int drawRect2(Rectangle *rect, int x, int y);
+	int drawRect2(Rectangle *rect, int x, int y);
 
-Rectangle *getRect(int height, int width, char material);
-Element *allocElement(void *node);
+	Rectangle *getRect(int height, int width, char material);
+	Element *allocElement(void *node);
+}
 
 #endif
