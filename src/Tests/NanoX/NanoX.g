@@ -1,6 +1,6 @@
-#include "Screen.glh"
-#include "Element.glh"
-#include "General.glh"
+#include "Screen.h"
+#include "Element.h"
+#include "General.h"
 
 void
 set_keypress(void)

@@ -1,2 +1,2 @@
-# Glass
-Compiler with C-like grammar based on llvm
+# Gripr
+Compiler with C-style grammar based on llvm
