@@ -1,2 +1,3 @@
 # Gripr
-Compiler with C-style grammar based on llvm
+A language with C-style grammar.
+Compiler is based on llvm
