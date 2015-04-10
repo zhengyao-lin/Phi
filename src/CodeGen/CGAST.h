@@ -20,8 +20,10 @@
 #include <llvm/ExecutionEngine/JIT.h>
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Support/Casting.h>
+#include <llvm/Transforms/Utils/ModuleUtils.h>
 #include "../ErrorMsg/EMCore.h"
 #include "CGContainer.h"
+#include <time.h>
 
 #define STRUCT_PREFIX ("struct.")
 #define UNION_PREFIX ("union.")
@@ -75,6 +77,7 @@ public:
 	int current_bit_width; // for extra long integer
 	BasicBlock *current_end_block; // used for branch
 	std::string current_namespace;
+	Function *global_constructor;
 
 	int in_param_flag = 0;
 
@@ -85,11 +88,64 @@ public:
 		current_bit_width = 0;
 		current_end_block = NULL;
 		current_namespace = "";
+		global_constructor = NULL;
 		resetLValue();
     }
 
 	~CodeGenContext() {
 		delete builder;
+	}
+
+	string
+	getRandomString(int length)
+	{
+		int flag, i;
+		string ret_str;
+		srand(clock());
+	  
+		for (i = 0; i < length - 1; i++)
+		{
+			flag = rand() % 3;
+			switch (flag)
+			{
+			    case 0:
+			        ret_str += 'A' + rand() % 26;
+			        break;
+			    case 1:
+			        ret_str += 'a' + rand() % 26;
+			        break;
+			    case 2:
+			        ret_str += '0' + rand() % 10;
+			        break;
+			    default:
+			        ret_str += 'x';
+			        break;
+			}
+		}
+		return ret_str;
+	}
+
+	void setGlobalConstructor()
+	{
+		if (global_constructor) {
+			pushBlock(&global_constructor->back());
+		} else {
+			FunctionType *ftype = FunctionType::get(builder->getVoidTy(),
+													ArrayRef<Type*>(), false);
+			global_constructor = Function::Create(ftype, GlobalValue::ExternalLinkage,
+												  ".global_ctor." + getRandomString(16), module);
+			pushBlock(BasicBlock::Create(getGlobalContext(), "", global_constructor, 0));
+		}
+		builder->SetInsertPoint(currentBlock());
+		return;
+	}
+
+	void terminateGlobalConstructor()
+	{
+		setGlobalConstructor();
+		builder->CreateRetVoid();
+		popAllBlock();
+		return;
 	}
 
     void generateCode(NBlock& root);

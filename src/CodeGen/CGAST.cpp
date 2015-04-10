@@ -11,6 +11,9 @@ void
 CodeGenContext::generateCode(NBlock& AST)
 {
 	AST.codeGen(*this);
+	terminateGlobalConstructor();
+	appendToGlobalCtors(*module, global_constructor, 65535);
+	return;
 }
 
 GenericValue CodeGenContext::runCode()

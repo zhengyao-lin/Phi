@@ -1,0 +1,10 @@
+#include "stds.h"
+
+int ret_four() { return 4; }
+
+int i = ret_four();
+
+int main()
+{
+	printf("%d\n", i);
+}

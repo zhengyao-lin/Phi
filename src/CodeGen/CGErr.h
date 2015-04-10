@@ -370,4 +370,12 @@ CGERR_Missing_Main_Function(CodeGenContext& context)
 	return;
 }
 
+inline void
+CGERR_Non_Constant_Initializer(CodeGenContext& context)
+{
+	context.messages.newMessage(new ErrorInfo(ErrorInfo::Warning, true, ErrorInfo::NoAct,
+											  "Non-constant initializer will be initialized in constructor which can't work in JIT mode"));
+	return;
+}
+
 #endif

@@ -153,21 +153,39 @@ NVariableDecl::codeGen(CodeGenContext& context)
 					init_value = Constant::getNullValue(tmp_type);
 				}
 
+				var = new GlobalVariable(*context.module, tmp_type, false,
+										 specifiers->linkage,
+										 init_value, context.formatName(decl_info_tmp->id->name)); 
+
 				if (decl_info_tmp->expr) {
-					if (!(init_value = dyn_cast<Constant>(NAssignmentExpr::doAssignCast(context, decl_info_tmp->expr->codeGen(context),
-																						tmp_type, nullptr,
-																						getLine(this), getFile(this))))) {
+					Value *tmp_val;
+					if (!context.currentBlock()) {
+						CGERR_Non_Constant_Initializer(context);
+						CGERR_setLineNum(context, getLine(this), getFile(this));
+						CGERR_showAllMsg(context);
+
+						context.setGlobalConstructor();
+						tmp_val = NAssignmentExpr::doAssignCast(context, decl_info_tmp->expr->codeGen(context),
+																tmp_type, nullptr,
+																getLine(this), getFile(this));
+						context.builder->CreateStore(tmp_val, var);
+						context.popAllBlock();
+					} else {
+						tmp_val = decl_info_tmp->expr->codeGen(context);
+						init_value = dyn_cast<Constant>(NAssignmentExpr::doAssignCast(context, tmp_val, tmp_type, nullptr,
+																					  getLine(this), getFile(this)));
+						var->setInitializer(init_value);
+					}
+					
+					/* if (!(init_value = dyn_cast<Constant>(tmp_val))) {
 						CGERR_External_Variable_Is_Not_Constant(context);
 						CGERR_setLineNum(context, getLine(this), getFile(this));
 						CGERR_showAllMsg(context);
 						return CGValue();
-					}
+					} */
 					delete decl_info_tmp->expr;
 				}
 
-				var = new GlobalVariable(*context.module, tmp_type, false,
-										 specifiers->linkage,
-										 init_value, context.formatName(decl_info_tmp->id->name)); 
 				context.getGlobals()[context.formatName(decl_info_tmp->id->name)] = var;
 			}
 

@@ -26,7 +26,7 @@ IOSetting::getRandomString(int length)
 {
 	int flag, i;
 	string ret_str;
-	srand(time(NULL));
+	srand(clock());
   
 	for (i = 0; i < length - 1; i++)
 	{
