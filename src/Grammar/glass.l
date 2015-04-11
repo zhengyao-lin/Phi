@@ -83,6 +83,7 @@ setFile(char *text, int length)
 <INITIAL>"namespace"						return TOKEN(TNAMESPACE);
 <INITIAL>"if"								return TOKEN(TIF);
 <INITIAL>"else"							return TOKEN(TELSE);
+<INITIAL>"for"								return TOKEN(TFOR);
 <INITIAL>"while"							return TOKEN(TWHILE);
 <INITIAL>"true"							return TOKEN(TTRUE);
 <INITIAL>"false"							return TOKEN(TFALSE);
@@ -96,6 +97,8 @@ setFile(char *text, int length)
 <INITIAL>"typedef"						return TOKEN(TTYPEDEF);
 <INITIAL>"union"							return TOKEN(TUNION);
 <INITIAL>"goto"							return TOKEN(TGOTO);
+<INITIAL>"break"							return TOKEN(TBREAK);
+<INITIAL>"continue"						return TOKEN(TCONTINUE);
 <INITIAL>"return"							return TOKEN(TRETURN);
 
  /* Assignment */

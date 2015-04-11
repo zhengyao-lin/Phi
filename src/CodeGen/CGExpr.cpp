@@ -1010,3 +1010,11 @@ NCondExpr::codeGen(CodeGenContext& context)
 
 	return CGValue(phi_node);
 }
+
+CGValue
+NCompoundExpr::codeGen(CodeGenContext& context)
+{
+	Value *ret = first.codeGen(context);
+	second.codeGen(context);
+	return CGValue(ret);
+}

@@ -48,6 +48,25 @@ public:
 	virtual ~NExpression() {}
 };
 
+class NCompoundExpr : public NExpression {
+public:
+	int lineno = -1;
+	char *file_name = NULL;
+	NExpression &first;
+	NExpression &second;
+
+	NCompoundExpr(NExpression &first, NExpression &second) :
+	first(first), second(second) { }
+
+	virtual ~NCompoundExpr()
+	{
+		delete &first;
+		delete &second;
+	}
+
+	virtual CGValue codeGen(CodeGenContext& context);
+};
+
 class NIdentifier : public NExpression {
 public:
 	int lineno = -1;
@@ -603,16 +622,39 @@ class NWhileStatement : public NStatement {
 public:
 	int lineno = -1;
 	char *file_name = NULL;
-	NExpression& condition;
+	NExpression &condition;
 	NStatement *while_true;
 
-	NWhileStatement(NExpression& condition, NStatement *while_true) :
+	NWhileStatement(NExpression &condition, NStatement *while_true) :
 	condition(condition), while_true(while_true) { }
 
 	virtual ~NWhileStatement()
 	{
 		delete &condition;
 		delete while_true;
+	}
+
+	virtual CGValue codeGen(CodeGenContext& context);
+};
+
+class NForStatement : public NStatement {
+public:
+	int lineno = -1;
+	char *file_name = NULL;
+	NExpression &initializer;
+	NExpression &condition;
+	NExpression &tail;
+	NStatement *for_true;
+
+	NForStatement(NExpression &initializer, NExpression& condition, NExpression &tail, NStatement *for_true) :
+	initializer(initializer), condition(condition), tail(tail), for_true(for_true) { }
+
+	virtual ~NForStatement()
+	{
+		delete &initializer;
+		delete &condition;
+		delete &tail;
+		delete for_true;
 	}
 
 	virtual CGValue codeGen(CodeGenContext& context);
@@ -639,6 +681,8 @@ public:
 
 class NLabelStatement : public NStatement {
 public:
+	int lineno = -1;
+	char *file_name = NULL;
 	std::string label_name;
 	NStatement& statement;
 
@@ -655,12 +699,27 @@ public:
 
 class NGotoStatement : public NStatement {
 public:
+	int lineno = -1;
+	char *file_name = NULL;
 	std::string label_name;
 
 	NGotoStatement(std::string label_name) :
 	label_name(label_name) { }
 
 	virtual ~NGotoStatement() {}
+	virtual CGValue codeGen(CodeGenContext& context);
+};
+
+class NJumpStatement : public NStatement {
+public:
+	int lineno = -1;
+	char *file_name = NULL;
+	bool is_continue;
+
+	NJumpStatement(bool is_continue) :
+	is_continue(is_continue) { }
+
+	virtual ~NJumpStatement() {}
 	virtual CGValue codeGen(CodeGenContext& context);
 };
 

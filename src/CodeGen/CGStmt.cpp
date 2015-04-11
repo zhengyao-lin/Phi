@@ -47,6 +47,8 @@ CGValue
 NWhileStatement::codeGen(CodeGenContext& context)
 {
 	BasicBlock *orig_end_block;
+	BasicBlock *orig_break_block;
+	BasicBlock *orig_continue_block;
 	BasicBlock *orig_block;
 	BasicBlock *cond_block;
 	BasicBlock *while_true_block;
@@ -55,6 +57,8 @@ NWhileStatement::codeGen(CodeGenContext& context)
 
 	orig_block = context.currentBlock();
 	orig_end_block = context.current_end_block;
+	orig_break_block = context.current_break_block;
+	orig_continue_block = context.current_continue_block;
 
 	cond_block = BasicBlock::Create(getGlobalContext(), "", orig_block->getParent(),
 									orig_end_block);
@@ -67,6 +71,8 @@ NWhileStatement::codeGen(CodeGenContext& context)
 	end_block = BasicBlock::Create(getGlobalContext(), "", orig_block->getParent(),
 								   orig_end_block);
 	context.current_end_block = end_block;
+	context.current_break_block = end_block;
+	context.current_continue_block = cond_block;
 
 	while_true_block = BasicBlock::Create(getGlobalContext(), "", orig_block->getParent(),
 										  context.current_end_block);
@@ -78,9 +84,72 @@ NWhileStatement::codeGen(CodeGenContext& context)
 	context.popBlock();
 
 	context.current_end_block = orig_end_block; // restore info
+	context.current_break_block = orig_break_block;
+	context.current_continue_block = orig_continue_block;
 	setBlock(end_block); // insert other insts at end block
 
 	return CGValue(BranchInst::Create(while_true_block, end_block, cond, orig_block));
+}
+
+CGValue
+NForStatement::codeGen(CodeGenContext& context)
+{
+	BasicBlock *orig_end_block;
+	BasicBlock *orig_break_block;
+	BasicBlock *orig_continue_block;
+	BasicBlock *orig_block;
+	BasicBlock *cond_block;
+	BasicBlock *for_true_block;
+	BasicBlock *tail_block;
+	BasicBlock *end_block;
+	Value *cond;
+
+	initializer.codeGen(context);
+	orig_block = context.currentBlock();
+	orig_end_block = context.current_end_block;
+	orig_break_block = context.current_break_block;
+	orig_continue_block = context.current_continue_block;
+
+	cond_block = BasicBlock::Create(getGlobalContext(), "", orig_block->getParent(),
+									orig_end_block);
+	BranchInst::Create(cond_block, orig_block); // auto jump to cond block
+	setBlock(cond_block);
+
+	if (cond = condition.codeGen(context)) {
+		cond = context.builder->CreateIsNotNull(condition.codeGen(context), "");
+	}
+	orig_block = context.currentBlock();
+
+	end_block = BasicBlock::Create(getGlobalContext(), "", orig_block->getParent(),
+								   orig_end_block);
+	for_true_block = BasicBlock::Create(getGlobalContext(), "", orig_block->getParent(),
+										context.current_end_block);
+	tail_block = BasicBlock::Create(getGlobalContext(), "", orig_block->getParent(),
+									context.current_end_block);
+	context.current_end_block = end_block;
+	context.current_break_block = end_block;
+	context.current_continue_block = tail_block;
+
+	setBlock(for_true_block);
+	for_true->codeGen(context);
+	context.builder->CreateBr(tail_block); // goto tail
+
+	setBlock(tail_block);
+	tail.codeGen(context);
+	context.builder->CreateBr(cond_block); // rejudge
+
+	context.popBlock();
+
+	context.current_end_block = orig_end_block; // restore info
+	context.current_break_block = orig_break_block;
+	context.current_continue_block = orig_continue_block;
+	setBlock(end_block); // insert other insts at end block
+
+	if (!cond) {
+		return BranchInst::Create(for_true_block, orig_block);
+	}
+
+	return CGValue(BranchInst::Create(for_true_block, end_block, cond, orig_block));
 }
 
 CGValue
@@ -180,6 +249,40 @@ NGotoStatement::codeGen(CodeGenContext& context)
 	setBlock(BasicBlock::Create(getGlobalContext(), "",
 								context.currentBlock()->getParent(),
 								context.current_end_block));
+
+	return CGValue(br_inst);
+}
+
+CGValue
+NJumpStatement::codeGen(CodeGenContext& context)
+{
+	BranchInst *br_inst;
+
+	if (is_continue) {
+		if (!context.current_continue_block) {
+			CGERR_Continue_Without_Iteration(context);
+			CGERR_setLineNum(context, getLine(this), getFile(this));
+			CGERR_showAllMsg(context);
+			return CGValue();
+		}
+		br_inst = context.builder->CreateBr(context.current_continue_block);
+		setBlock(BasicBlock::Create(getGlobalContext(), "",
+							context.currentBlock()->getParent(),
+							context.current_end_block));
+		return CGValue(br_inst);
+	}
+
+	if (!context.current_break_block) {
+		CGERR_Break_Without_Iteration(context);
+		CGERR_setLineNum(context, getLine(this), getFile(this));
+		CGERR_showAllMsg(context);
+		return CGValue();
+	}
+
+	br_inst = context.builder->CreateBr(context.current_break_block);
+	setBlock(BasicBlock::Create(getGlobalContext(), "",
+							context.currentBlock()->getParent(),
+							context.current_end_block));
 
 	return CGValue(br_inst);
 }

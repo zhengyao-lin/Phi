@@ -378,4 +378,20 @@ CGERR_Non_Constant_Initializer(CodeGenContext& context)
 	return;
 }
 
+inline void
+CGERR_Continue_Without_Iteration(CodeGenContext& context)
+{
+	context.messages.newMessage(new ErrorInfo(ErrorInfo::Error, true, ErrorInfo::Exit1,
+											  "Used continue statement without iteration statement"));
+	return;
+}
+
+inline void
+CGERR_Break_Without_Iteration(CodeGenContext& context)
+{
+	context.messages.newMessage(new ErrorInfo(ErrorInfo::Error, true, ErrorInfo::Exit1,
+											  "Used break statement without iteration statement or switch statement"));
+	return;
+}
+
 #endif

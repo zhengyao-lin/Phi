@@ -59,11 +59,11 @@
 				TAND TNOT TSIZEOF TALIGNOF TTYPEOF TARROW
 			    TELLIPSIS TCOLON TSEMICOLON TCOMMA TDOT
 				TLBRAKT TRBRAKT TLAND TLOR TOR TXOR TIF TELSE TWHILE
-				TLNOT TNAMESPACE TDCOLON TINC TDEC TQUEM
+				TLNOT TNAMESPACE TDCOLON TINC TDEC TQUEM TFOR
 %token <token> TADD TSUB TMUL TDIV TMOD TSHR TSHL
 				TAADD TASUB TAMUL TADIV TAMOD TASHR TASHL TAAND TAOR TAXOR
 %token <token> TRETURN TEXTERN TDELEGATE TSTRUCT TSTATIC
-				TTYPEDEF TUNION TGOTO
+				TTYPEDEF TUNION TGOTO TBREAK TCONTINUE
 
 %type <identifier> identifier type_name namespace_header
 %type <expression> numeric string_literal expression
@@ -281,7 +281,7 @@ initializer_opt
 	{
 		$$ = NULL;
 	}
-	| TASSIGN expression
+	| TASSIGN assignment_expression
 	{
 		$$ = $2;
 	}
@@ -566,6 +566,16 @@ iteration_statement
 		$$ = new NWhileStatement(*$3, $5);
 		SETLINE($$);
 	}
+	| TFOR TLPAREN expression_statement expression_statement expression TRPAREN statement
+	{
+		$$ = new NForStatement(*(NExpression*)$3, *(NExpression*)$4, *$5, $7);
+		SETLINE($$);
+	}
+	| TFOR TLPAREN expression_statement expression_statement TRPAREN statement
+	{
+		$$ = new NForStatement(*(NExpression*)$3, *(NExpression*)$4, *new NVoid(), $6);
+		SETLINE($$);
+	}
 	;
 
 expression_statement
@@ -599,6 +609,7 @@ labeled_statement
 	{
 		$$ = new NLabelStatement($1->name, *$3);
 		delete $1;
+		SETLINE($$);
 	}
 	;
 
@@ -607,6 +618,17 @@ jump_statement
 	{
 		$$ = new NGotoStatement($2->name);
 		delete $2;
+		SETLINE($$);
+	}
+	| TBREAK
+	{
+		$$ = new NJumpStatement(false);
+		SETLINE($$);
+	}
+	| TCONTINUE
+	{
+		$$ = new NJumpStatement(true);
+		SETLINE($$);
 	}
 	| ret_statement
 	;
@@ -987,15 +1009,20 @@ expression
 	{
 		SETLINE($$);
 	}
+	| expression TCOMMA assignment_expression
+	{
+		$$ = new NCompoundExpr(*$1, *$3);
+		SETLINE($$);
+	}
 	;
 
 expression_list
-	: expression
+	: assignment_expression
 	{
 		$$ = new ExpressionList();
 		$$->push_back($1);
 	}
-	| expression_list TCOMMA expression
+	| expression_list TCOMMA assignment_expression
 	{
 		$1->push_back($3);
 	}

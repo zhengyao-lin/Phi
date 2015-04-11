@@ -1,0 +1,14 @@
+#include "stds.h"
+
+int main()
+{
+	int p = 9;
+	int i = (1, p++);
+
+	for (i = 0; i < 10; i++, p--) {
+		continue;
+		printf("%d, %d, %d\n", i, p, i + p);
+	}
+
+	return 0;
+}

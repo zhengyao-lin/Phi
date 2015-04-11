@@ -77,6 +77,8 @@ public:
 	std::map<std::string, UnionFieldMap> unions;
 	int current_bit_width; // for extra long integer
 	BasicBlock *current_end_block; // used for branch
+	BasicBlock *current_break_block;
+	BasicBlock *current_continue_block;
 	std::string current_namespace;
 	Function *global_constructor;
 
@@ -88,6 +90,8 @@ public:
 		types = initializeBasicType(*this);
 		current_bit_width = 0;
 		current_end_block = NULL;
+		current_break_block = NULL;
+		current_continue_block = NULL;
 		current_namespace = "";
 		global_constructor = NULL;
 		resetLValue();

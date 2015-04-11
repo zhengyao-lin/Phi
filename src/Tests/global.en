@@ -2,7 +2,7 @@
 
 #define ret_four() (4)
 
-#define min(x,y)()
+#define min(x,y) (x < y ? x : y)
 
 int i = ret_four();
 

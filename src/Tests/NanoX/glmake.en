@@ -15,9 +15,9 @@ doClean()
 
 int main(int argc, char **argv)
 {
-	glmake_toObject("NanoX.et");
-	glmake_toObject("Screen.et");
-	glmake_toObject("Element.et");
+	glmake_toObject("NanoX.en);
+	glmake_toObject("Screen.en");
+	glmake_toObject("Element.en");
 	system("gcc NanoX.o Screen.o Element.o -o NanoX");
 
 	system("./NanoX");
