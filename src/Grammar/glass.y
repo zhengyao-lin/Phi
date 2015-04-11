@@ -59,7 +59,7 @@
 				TAND TNOT TSIZEOF TALIGNOF TTYPEOF TARROW
 			    TELLIPSIS TCOLON TSEMICOLON TCOMMA TDOT
 				TLBRAKT TRBRAKT TLAND TLOR TOR TXOR TIF TELSE TWHILE
-				TLNOT TNAMESPACE TDCOLON TINC TDEC
+				TLNOT TNAMESPACE TDCOLON TINC TDEC TQUEM
 %token <token> TADD TSUB TMUL TDIV TMOD TSHR TSHL
 				TAADD TASUB TAMUL TADIV TAMOD TASHR TASHL TAAND TAOR TAXOR
 %token <token> TRETURN TEXTERN TDELEGATE TSTRUCT TSTATIC
@@ -944,7 +944,11 @@ logical_or_expression
 
 conditional_expression
 	: logical_or_expression
-	//| logical_or_expression ? expression : conditional_expression
+	| logical_or_expression TQUEM expression TCOLON conditional_expression
+	{
+		$$ = new NCondExpr(*$1, *$3, *$5);
+		SETLINE($$);
+	}
 	;
 
 assign_op

@@ -153,6 +153,12 @@ IOSetting::getFileName(string file)
 	return file.substr(0, i);
 }
 
+string
+IOSetting::getFilePath(string file)
+{
+	return file.substr(0, file.length() - string(basename(file.c_str())).length());
+}
+
 void
 IOSetting::doOutput(Module *mod)
 {
@@ -236,7 +242,7 @@ IOSetting::doOutput(Module *mod)
 		cout << getObject() << endl;
 		string cmd = "gcc " + tmp_output_name + " -o "
 					 + (getObject().empty()
-						? "a.out"
+						? getFilePath(input_file) + "/a.out"
 						: getObject());
 		tmp_file_paths->push_back(tmp_output_name);
 		int status = system(cmd.c_str());

@@ -118,6 +118,7 @@ setFile(char *text, int length)
 <INITIAL>"<="								return TOKEN(TCLE);
 <INITIAL>">"								return TOKEN(TCGT);
 <INITIAL>">="								return TOKEN(TCGE);
+<INITIAL>"?"								return TOKEN(TQUEM);
 
 <INITIAL>"->"								return TOKEN(TARROW);
 

@@ -445,7 +445,7 @@ NPrefixExpr::codeGen(CodeGenContext& context)
 
 	switch (op) {
 		case TLNOT:
-			return CGValue(context.builder->CreateNot(val_tmp, ""));
+			return CGValue(context.builder->CreateIsNull(val_tmp, ""));
 			break;
 	}
 
@@ -505,7 +505,6 @@ NPrefixExpr::codeGen(CodeGenContext& context)
 												   val_tmp, ""));
 			case TNOT:
 				return CGValue(context.builder->CreateNot(val_tmp, ""));
-				break;
 		}
 	}
 
@@ -629,15 +628,23 @@ NAssignmentExpr::doAssignCast(CodeGenContext& context, Value *value,
 		} else if (value_type->isPointerTy() && variable_type->isIntegerTy()) {
 			return context.builder->CreatePtrToInt(value, variable_type, "");
 		} else if (isArrayType(value_type)
-					&& isArrayType(variable_type)
-					&& !context.currentBlock()) {
-			ArrayType *val_elem_type = dyn_cast<ArrayType>(value_type);
-			ArrayType *var_elem_type = dyn_cast<ArrayType>(variable_type);
-			if (val_elem_type->getNumElements()
-				!= var_elem_type->getNumElements()) {
-				value = doAlignArray(context, dyn_cast<Constant>(value),
-									 var_elem_type->getArrayElementType(),
-									 var_elem_type->getNumElements(), lineno, file_name);
+					&& isArrayType(variable_type)) {
+			if (!context.currentBlock()) {
+				ArrayType *val_elem_type = dyn_cast<ArrayType>(value_type);
+				ArrayType *var_elem_type = dyn_cast<ArrayType>(variable_type);
+				if (val_elem_type->getNumElements()
+					!= var_elem_type->getNumElements()) {
+					value = doAlignArray(context, dyn_cast<Constant>(value),
+										 var_elem_type->getArrayElementType(),
+										 var_elem_type->getNumElements(), lineno, file_name);
+				}
+			} else {
+				assert(variable);
+				context.builder->CreateMemCpy(variable,
+											  getLoadOperand(context, value, true),
+											  getSizeOfJIT(value_type),
+											  getAlignOfJIT(value_type), false);
+				value = NULL;
 			}
 
 			return value;
@@ -645,16 +652,6 @@ NAssignmentExpr::doAssignCast(CodeGenContext& context, Value *value,
 					&& isPointerType(variable_type)
 					&& !context.currentBlock()) {
 			return value;
-		} else if (isArrayType(value_type)
-					&& isArrayType(variable_type)) {
-			if (!variable) {
-				std::abort();
-			}
-			context.builder->CreateMemCpy(variable,
-										  getLoadOperand(context, value, true),
-										  getSizeOfJIT(value_type),
-										  getAlignOfJIT(value_type), false);
-			return NULL;
 		} else if (isArrayType(value_type) && isPointerType(variable_type)) {
 			val_tmp = dyn_cast<Value>(context.builder->CreateConstInBoundsGEP2_32(getLoadOperand(context, value, true), 0, 0, ""));
 			if (isSameType(val_tmp->getType(), variable_type)) {
@@ -912,4 +909,104 @@ NIncDecExpr::codeGen(CodeGenContext& context)
 	}
 
 	return CGValue(val_tmp);
+}
+
+void
+NCondExpr::castCompare(CodeGenContext& context,
+					   llvm::BasicBlock *lhs_true, llvm::Value *&lhs,
+					   llvm::BasicBlock *lhs_else, llvm::Value *&rhs)
+{
+	if (lhs->getType() == rhs->getType()) return;
+
+	if (lhs->getType()->isIntegerTy()
+		&& rhs->getType()->isIntegerTy()) { // int to int
+		if (getBitWidth(rhs->getType())
+			> getBitWidth(lhs->getType())) {
+			setBlock(lhs_true);
+			lhs = context.builder->CreateIntCast(lhs, rhs->getType(), true);
+			return;
+		} else {
+			setBlock(lhs_else);
+			rhs = context.builder->CreateIntCast(rhs, lhs->getType(), true);
+			return;
+		}
+	} else if (lhs->getType()->isFloatingPointTy()
+				&& rhs->getType()->isFloatingPointTy()) {
+		if (rhs->getType()->getTypeID()
+			> lhs->getType()->getTypeID()) {
+			setBlock(lhs_true);
+			lhs = context.builder->CreateFPCast(lhs, rhs->getType());
+			return;
+		} else {
+			setBlock(lhs_else);
+			rhs = context.builder->CreateFPCast(rhs, lhs->getType());
+			return;
+		}
+	} else if (lhs->getType()->isFloatingPointTy()
+				&& rhs->getType()->isIntegerTy()) {
+		setBlock(lhs_else);
+		rhs = context.builder->CreateSIToFP(rhs, lhs->getType());
+		return;
+	} else if (lhs->getType()->isIntegerTy()
+				&& rhs->getType()->isFloatingPointTy()) {
+		setBlock(lhs_true);
+		lhs = context.builder->CreateSIToFP(lhs, rhs->getType());
+		return;
+	} else {
+		setBlock(lhs_else);
+		rhs = context.builder->CreateBitCast(rhs, lhs->getType());
+		return;
+	}
+
+	return;
+}
+
+CGValue
+NCondExpr::codeGen(CodeGenContext& context)
+{
+	Value *cond_val;
+	Value *lhs;
+	Value *rhs;
+	BasicBlock *lhs_true;
+	BasicBlock *lhs_else;
+	BasicBlock *lhs_end;
+	BasicBlock *orig_block;
+	PHINode *phi_node;
+
+	if (context.isLValue()) {
+		context.resetLValue();
+		cond_val = context.builder->CreateIsNotNull(cond.codeGen(context));
+		context.setLValue();
+	} else {
+		cond_val = context.builder->CreateIsNotNull(cond.codeGen(context));
+	}
+
+	orig_block = context.currentBlock();
+
+	lhs_true = BasicBlock::Create(getGlobalContext(), "", orig_block->getParent(),
+								  context.current_end_block);
+	lhs_else = BasicBlock::Create(getGlobalContext(), "", orig_block->getParent(),
+								  context.current_end_block);
+	lhs_end = BasicBlock::Create(getGlobalContext(), "", orig_block->getParent(),
+								 context.current_end_block);
+
+	context.builder->CreateCondBr(cond_val, lhs_true, lhs_else);
+
+	setBlock(lhs_true);
+	lhs = if_true.codeGen(context);
+	context.builder->CreateBr(lhs_end);
+
+	setBlock(lhs_else);
+	rhs = if_else.codeGen(context);
+	context.builder->CreateBr(lhs_end);
+
+	castCompare(context, lhs_true, lhs, lhs_else, rhs);
+	setBlock(lhs_end);
+	
+	phi_node = context.builder->CreatePHI(lhs->getType(), 2);
+
+	phi_node->addIncoming(lhs, lhs_true);
+	phi_node->addIncoming(rhs, lhs_else);
+
+	return CGValue(phi_node);
 }

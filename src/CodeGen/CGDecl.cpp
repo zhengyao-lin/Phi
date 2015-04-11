@@ -168,9 +168,14 @@ NVariableDecl::codeGen(CodeGenContext& context)
 						tmp_val = NAssignmentExpr::doAssignCast(context, decl_info_tmp->expr->codeGen(context),
 																tmp_type, nullptr,
 																getLine(this), getFile(this));
-						context.builder->CreateStore(tmp_val, var);
+						if (init_value = dyn_cast<Constant>(tmp_val)) {
+							var->setInitializer(init_value);
+						} else {
+							context.builder->CreateStore(tmp_val, var);
+						}
 						context.popAllBlock();
 					} else {
+						assert(specifiers->linkage == GlobalValue::ExternalLinkage);
 						tmp_val = decl_info_tmp->expr->codeGen(context);
 						init_value = dyn_cast<Constant>(NAssignmentExpr::doAssignCast(context, tmp_val, tmp_type, nullptr,
 																					  getLine(this), getFile(this)));

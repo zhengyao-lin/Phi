@@ -125,6 +125,7 @@ public:
 	bool isIROutput();
 
 	string getFileName(string file);
+	string getFilePath(string file);
 
 	void doOutput(Module *mod);
 };

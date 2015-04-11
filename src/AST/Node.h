@@ -425,6 +425,29 @@ public:
 
 	virtual CGValue codeGen(CodeGenContext& context);
 };
+class NCondExpr : public NExpression {
+public:
+	int lineno = -1;
+	char *file_name = NULL;
+	NExpression &cond;
+	NExpression &if_true;
+	NExpression &if_else;
+
+	NCondExpr(NExpression &cond, NExpression &if_true, NExpression &if_else) :
+	cond(cond), if_true(if_true), if_else(if_else) { }
+
+	virtual ~NCondExpr()
+	{
+		delete &cond;
+		delete &if_true;
+		delete &if_else;
+	}
+
+	virtual CGValue codeGen(CodeGenContext& context);
+	virtual void castCompare(CodeGenContext& context,
+							  llvm::BasicBlock *lhs_true, llvm::Value *&lhs,
+							  llvm::BasicBlock *lhs_else, llvm::Value *&rhs);
+};
 // Postfix Expression End
 
 // Binary Expression

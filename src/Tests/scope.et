@@ -2,12 +2,20 @@
 
 int main()
 {
-	int i = 11;
+	int i = 0;
 	void *ptr = 10;
 
 	if ((ptr != 10 && *ptr > 10) || ptr < 20) {
 		printf("%d\n", ptr);
 	}
+
+	printf("%s\n", i < 10 ? "i < 10" : "i >= 10");
+
+	double a = 0, b = 0;
+
+	(i ? a : b) = 20;
+
+	printf("%d, %lf, %lf\n", i, a, b);
 
 	return 0;
 }

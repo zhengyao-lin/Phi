@@ -1,10 +1,12 @@
 #include "stds.h"
 
-int ret_four() { return 4; }
+#define ret_four() (4)
+
+#define min(x,y)()
 
 int i = ret_four();
 
 int main()
 {
-	printf("%d\n", i);
+	printf("%d, %d\n", i, min(20, 10));
 }
