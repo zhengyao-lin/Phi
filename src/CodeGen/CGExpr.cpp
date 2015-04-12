@@ -687,7 +687,9 @@ NAssignmentExpr::codeGen(CodeGenContext& context)
 	context.resetLValue();
 
 	if (!isPointer(lhs)
-		/*|| typeid(lval) == typeid(NBinaryExpr)*/) {
+		|| typeid(lval) == typeid(NBinaryExpr)
+		|| (typeid(lval) == typeid(NPrefixExpr) && (((NPrefixExpr&)lval).op == TINC || ((NPrefixExpr&)lval).op == TDEC))
+		|| typeid(lval) == typeid(NIncDecExpr)) {
 		CGERR_Unassignable_LValue(context);
 		CGERR_setLineNum(context, getLine(this), getFile(this));
 		CGERR_showAllMsg(context);
@@ -1014,7 +1016,9 @@ NCondExpr::codeGen(CodeGenContext& context)
 CGValue
 NCompoundExpr::codeGen(CodeGenContext& context)
 {
-	Value *ret = first.codeGen(context);
-	second.codeGen(context);
-	return CGValue(ret);
+	CGValue ret = first.codeGen(context);
+
+	ret.pushExp(second.codeGen(context));
+
+	return ret;
 }

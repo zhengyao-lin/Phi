@@ -6,10 +6,7 @@ using namespace std;
 
 enum ValueToken {
 	NoneValueKind = 0,
-	LeftValueKind,
-	RightValueKind,
-	FunctionValueKind,
-	MultiValueKind, /* must be a left value */
+	ExpressionListKind,
 };
 
 class ValueKind {
@@ -61,14 +58,21 @@ public:
 
 class CGValue {
 	Value *data = NULL;
+	vector<Value *> exp_list;
 	ValueKind kind;
 
 public:
 	CGValue() { }
 
 	CGValue(Value *val) :
-	data(val)
+	data(val), exp_list(vector<Value *>())
 	{ }
+
+	void pushExp(Value *val)
+	{
+		exp_list.push_back(val);
+		return;
+	}
 
 	void addKind(ValueToken t1,
 				 ValueToken t2 = NoneValueKind,

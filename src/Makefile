@@ -1,9 +1,9 @@
 TARGET = testbed
 OBJS = Grammar/Grammar.o \
-	   CodeGen/CodeGen.o \
 	   ErrorMsg/ErrorMsg.o \
 	   IO/IO.o \
 	   Lib/Lib.o \
+	   CodeGen/CodeGen.o \
 	   main.o
 
 LLVMCONFIG = llvm-config

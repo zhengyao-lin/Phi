@@ -122,11 +122,11 @@ NForStatement::codeGen(CodeGenContext& context)
 
 	end_block = BasicBlock::Create(getGlobalContext(), "", orig_block->getParent(),
 								   orig_end_block);
+	context.current_end_block = end_block;
 	for_true_block = BasicBlock::Create(getGlobalContext(), "", orig_block->getParent(),
 										context.current_end_block);
 	tail_block = BasicBlock::Create(getGlobalContext(), "", orig_block->getParent(),
 									context.current_end_block);
-	context.current_end_block = end_block;
 	context.current_break_block = end_block;
 	context.current_continue_block = tail_block;
 

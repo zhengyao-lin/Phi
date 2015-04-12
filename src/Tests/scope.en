@@ -2,13 +2,20 @@
 
 int main()
 {
-	int p = 9;
-	int i = (1, p++);
+	int p = 10;
+	int i = (1, p++, p--);
 
-	for (i = 0; i < 10; i++, p--) {
-		continue;
+	for (i = 0; i <= 10; i++, p--) {
+		//continue;
 		printf("%d, %d, %d\n", i, p, i + p);
 	}
+
+	char *ptr[10];
+
+	*(ptr+1) = "index-1";
+	*&ptr[0] = "index-0";
+
+	printf("%s, %s\n", ptr[0], ptr[1]);
 
 	return 0;
 }

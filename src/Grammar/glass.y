@@ -464,7 +464,7 @@ ptr_dim
 	;
 
 array_dim
-	: TLBRAKT expression TRBRAKT
+	: TLBRAKT assignment_expression TRBRAKT
 	{
 		$$ = new ArrayDim();
 		$$->push_back($2);
@@ -474,7 +474,7 @@ array_dim
 		$$ = new ArrayDim();
 		$$->push_back(NULL);
 	}
-	| TLBRAKT expression TRBRAKT array_dim
+	| TLBRAKT assignment_expression TRBRAKT array_dim
 	{
 		$4->push_back($2);
 		$$ = $4;
