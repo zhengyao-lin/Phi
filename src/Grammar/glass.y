@@ -1032,7 +1032,7 @@ int getAssignToBinary(int token)
 {
 	switch(token) {
 		case TAADD:
-			return TAND;
+			return TADD;
 		case TASUB:
 			return TSUB;
 		case TAMUL:

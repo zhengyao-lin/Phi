@@ -1,0 +1,31 @@
+#include "stds.h"
+#define ALLOCSIZE 10000
+
+static char allocbuf[ALLOCSIZE];
+static char *allocp = allocbuf;
+
+void *alloc(int n)
+{
+	if (allocbuf + ALLOCSIZE - allocp >= n) {
+		allocp += n;
+		return allocp - n;
+	}
+	return NULL;
+}
+
+void afree(void *p)
+{
+	if (p >= allocbuf && p < allocbuf + ALLOCSIZE)
+		allocp = p;
+	return;
+}
+
+typedef struct Chain_tag { struct Chain_tag *next; } Chain;
+
+int main()
+{
+	Chain *c = alloc(sizeof(Chain));
+	printf("%d\n", c);
+	
+	return 0;
+}

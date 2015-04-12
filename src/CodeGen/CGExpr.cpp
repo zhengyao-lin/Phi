@@ -141,6 +141,21 @@ doBinaryCast(CodeGenContext& context, Value* &lhs, Value* &rhs)
 	Type *ltype = lhs->getType();
 	Type *rtype = rhs->getType();
 
+	if (ltype->isArrayTy()) {
+		lhs = context.builder->CreateConstInBoundsGEP2_32(getLoadOperand(context, lhs, true), 0, 0, "");
+		ltype = lhs->getType();
+	}
+	if (rtype->isArrayTy()) {
+		rhs = context.builder->CreateConstInBoundsGEP2_32(getLoadOperand(context, rhs, true), 0, 0, "");
+		rtype = rhs->getType();
+	}
+
+	if (ltype->isPointerTy() && rtype->isPointerTy()) {
+		lhs = context.builder->CreatePtrToInt(lhs, context.builder->getInt64Ty(), "");
+		rhs = context.builder->CreatePtrToInt(rhs, context.builder->getInt64Ty(), "");
+		return;
+	}
+
 	if (isSameType(ltype, rtype)) {
 		return;
 	}
@@ -167,9 +182,9 @@ doBinaryCast(CodeGenContext& context, Value* &lhs, Value* &rhs)
 	} else if (rtype->isIntegerTy() && ltype->isFloatingPointTy()) {
 		rhs = IntToFPCast_opt(context, rhs, ltype);
 		return;
-	} else if (rtype->isIntegerTy() && ltype->isPointerTy()) {
+	} else if (ltype->isPointerTy()) {
 		lhs = context.builder->CreatePtrToInt(lhs, rtype, "");
-	} else if (ltype->isIntegerTy() && rtype->isPointerTy()) {
+	} else if (rtype->isPointerTy()) {
 		rhs = context.builder->CreatePtrToInt(rhs, ltype, "");
 	}
 
@@ -653,7 +668,7 @@ NAssignmentExpr::doAssignCast(CodeGenContext& context, Value *value,
 					&& !context.currentBlock()) {
 			return value;
 		} else if (isArrayType(value_type) && isPointerType(variable_type)) {
-			val_tmp = dyn_cast<Value>(context.builder->CreateConstInBoundsGEP2_32(getLoadOperand(context, value, true), 0, 0, ""));
+			val_tmp = context.builder->CreateConstInBoundsGEP2_32(getLoadOperand(context, value, true), 0, 0, "");
 			if (isSameType(val_tmp->getType(), variable_type)) {
 				return val_tmp;
 			}
