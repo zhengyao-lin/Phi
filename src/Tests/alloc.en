@@ -25,7 +25,7 @@ typedef struct Chain_tag { struct Chain_tag *next; } Chain;
 int main()
 {
 	Chain *c = alloc(sizeof(Chain));
-	printf("%d\n", c);
+	printf("%d\n", c->next);
 	
 	return 0;
 }

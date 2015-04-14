@@ -39,7 +39,7 @@ setFile(char *text, int length)
 	int i;
 	char *file = NULL;
 	char tmp_buf[BUFFER_SIZE];
-	int args[ARG_SIZE];
+	int args[ARG_SIZE] = { 0 };
 	int arg_count = 0;
 
 	for (i = 0; i < length; i++) {
