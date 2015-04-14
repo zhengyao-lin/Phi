@@ -1,5 +1,5 @@
 #include "stds.h"
-#define ALLOCSIZE 10000
+#define ALLOCSIZE 1000000
 
 static char allocbuf[ALLOCSIZE];
 static char *allocp = allocbuf;
@@ -26,6 +26,7 @@ int main()
 {
 	Chain *c = alloc(sizeof(Chain));
 	printf("%d\n", c->next);
+	afree(c);
 	
 	return 0;
 }
