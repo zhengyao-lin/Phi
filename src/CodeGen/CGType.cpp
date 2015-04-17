@@ -54,19 +54,8 @@ initializeBasicType(CodeGenContext& context)
 	type_info_table[string("long")] = context.builder->getInt64Ty();
 	type_def[string("long")] = 0;
 
-	type_info_table[string("Int8")] = context.builder->getInt8Ty();
-	type_def[string("Int8")] = 0;
-	type_info_table[string("Int16")] = context.builder->getInt16Ty();
-	type_def[string("Int16")] = 0;
-	type_info_table[string("Int32")] = context.builder->getInt32Ty();
-	type_def[string("Int32")] = 0;
-	type_info_table[string("Int64")] = context.builder->getInt64Ty();
-	type_def[string("Int64")] = 0;
-
 	type_info_table[string("float")] = context.builder->getFloatTy();
 	type_def[string("float")] = 0;
-	type_info_table[string("single")] = context.builder->getFloatTy();
-	type_def[string("single")] = 0;
 	type_info_table[string("double")] = context.builder->getDoubleTy();
 	type_def[string("double")] = 0;
 
