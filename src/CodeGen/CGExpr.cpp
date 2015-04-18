@@ -117,7 +117,8 @@ NMethodCall::codeGen(CodeGenContext& context)
 							 GlobalValue::InternalLinkage);
 
 	for (expr_it = arguments.begin(), arg_it = ftype->param_begin();
-		 expr_it != arguments.end(); expr_it++, arg_it++) {
+		 expr_it != arguments.end() && (arg_it != ftype->param_end() || ftype->isVarArg());
+		 expr_it++, (arg_it != ftype->param_end() ? arg_it++ : 0)) {
 		arg_type = (arg_it < ftype->param_end() ? ftype->getParamType(arg_it - ftype->param_begin())
 												: NULL);
 
@@ -127,6 +128,13 @@ NMethodCall::codeGen(CodeGenContext& context)
 		args.push_back(NAssignmentExpr::doAssignCast(context, tmp,
 													 arg_type, nullptr,
 													 getLine(this), getFile(this)));
+	}
+
+	if (expr_it != arguments.end() || arg_it != ftype->param_end()) {
+		CGERR_Unable_Match_Arguments(context);
+		CGERR_setLineNum(context, getLine(this), getFile(this));
+		CGERR_showAllMsg(context);
+		return CGValue();
 	}
 
 	call = context.builder->CreateCall(func_val, makeArrayRef(args), "");
@@ -192,7 +200,9 @@ doBinaryCast(CodeGenContext& context, Value* &lhs, Value* &rhs)
 }
 
 #define setBlock(b) (context.pushBlock(b), \
-					 context.builder->SetInsertPoint(context.currentBlock()))
+					 (context.currentBlock()->getTerminator() ? \
+					 context.builder->SetInsertPoint(context.currentBlock()->getTerminator()) : \
+					 context.builder->SetInsertPoint(context.currentBlock())))
 
 static Value *
 emitLogicalExpr(CodeGenContext& context, NExpression &lval, NExpression &rval, bool is_or)

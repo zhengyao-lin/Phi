@@ -15,7 +15,7 @@ NInteger::codeGen(CodeGenContext& context)
 													: 10);
 	string str = value.substr(radix == 16 ? 2 : (radix == 8 ? 1 : 0 ));
 	unsigned bits = APInt::getBitsNeeded(str, radix);
-	bits = bits > 64 ? (bits / 64 + 1) * 64 : 64;
+	bits = bits > 32 ? (bits / 32 + (bits % 32 == 0 ? 0 : 1)) * 32 : 32;
 
 	ConstantInt *ret = ConstantInt::get(Type::getIntNTy(getGlobalContext(), bits),
 										StringRef(str), radix);

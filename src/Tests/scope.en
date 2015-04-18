@@ -1,7 +1,16 @@
 #include "stds.h"
 
+int tt() { return 0; }
+
+char getch() // unbuffered
+{
+	char c;
+	return (read(0, &c, 1) == 1 ? c : -1);
+}
+
 int main()
 {
+	getch();
 	int p = 10;
 	int i = (1, p++, p--);
 

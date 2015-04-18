@@ -58,14 +58,14 @@ namespace Screen {
 		return 0;
 	}
 
-	int setBackground()
+	int setBackground(char *color)
 	{
-		return printf(BG_IVORY);
+		return printf(color);
 	}
 
-	int setForeground()
+	int setForeground(char *color)
 	{
-		return printf(FG_BLACK);
+		return printf(color);
 	}
 
 	int setDefault()

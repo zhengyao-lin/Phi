@@ -41,8 +41,8 @@ int main()
 
 	Screen::initTerminal();
 
-	Screen::setBackground();
-	Screen::setForeground();
+	Screen::setBackground(BG_IVORY);
+	Screen::setForeground(FG_BLACK);
 
 	Screen::printStr("Welcome", 5, 7);
 	Screen::printStr("Press 'q' to exit", 6, 7);

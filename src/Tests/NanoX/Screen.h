@@ -11,8 +11,8 @@ namespace Screen {
 	int initTerminal();
 	int refreshScreen();
 
-	int setBackground();
-	int setForeground();
+	int setBackground(char *color);
+	int setForeground(char *color);
 	int setDefault();
 
 	int printStr(char *str, int line, int col);

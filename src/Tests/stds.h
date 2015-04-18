@@ -1,4 +1,5 @@
 #define NULL ((void *)0)
+#define EOF -1
 
 /* Macros */
 #define isspace(c) (c == ' ' || c == '\t')
@@ -20,3 +21,4 @@ extern void *malloc(int:64 size);
 extern void memset(void *ptr, int value, int:64 size);
 extern int system(char *s);
 extern void free(void *ptr);
+extern int read(int fd, char *buf, int n);

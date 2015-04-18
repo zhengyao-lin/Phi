@@ -394,4 +394,12 @@ CGERR_Break_Without_Iteration(CodeGenContext& context)
 	return;
 }
 
+inline void
+CGERR_Unable_Match_Arguments(CodeGenContext& context)
+{
+	context.messages.newMessage(new ErrorInfo(ErrorInfo::Error, true, ErrorInfo::Exit1,
+											  "Cannot match any function for function call"));
+	return;
+}
+
 #endif
