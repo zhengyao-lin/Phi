@@ -203,6 +203,9 @@ doBinaryCast(CodeGenContext& context, Value* &lhs, Value* &rhs)
 					 (context.currentBlock()->getTerminator() ? \
 					 context.builder->SetInsertPoint(context.currentBlock()->getTerminator()) : \
 					 context.builder->SetInsertPoint(context.currentBlock())))
+#define _rhs_getParent_O1_ (dyn_cast<Instruction>(rhs) ? \
+							dyn_cast<Instruction>(rhs)->getParent() :\
+							lhs_true) // only use in emitLogicalExpr function
 
 static Value *
 emitLogicalExpr(CodeGenContext& context, NExpression &lval, NExpression &rval, bool is_or)
@@ -237,7 +240,7 @@ emitLogicalExpr(CodeGenContext& context, NExpression &lval, NExpression &rval, b
 	phi_node = context.builder->CreatePHI(context.builder->getInt1Ty(), 2);
 
 	phi_node->addIncoming(context.builder->getInt1(is_or), orig_block);
-	phi_node->addIncoming(rhs, lhs_true);
+	phi_node->addIncoming(rhs, _rhs_getParent_O1_);
 
 	return phi_node;
 }
@@ -988,6 +991,13 @@ NCondExpr::castCompare(CodeGenContext& context,
 	return;
 }
 
+#define _lhs_getParent_O2_ (dyn_cast<Instruction>(lhs) ? \
+							dyn_cast<Instruction>(lhs)->getParent() :\
+							lhs_true) // only use in condition expression
+#define _rhs_getParent_O2_ (dyn_cast<Instruction>(rhs) ? \
+							dyn_cast<Instruction>(rhs)->getParent() :\
+							lhs_else) // only use in condition expression
+
 CGValue
 NCondExpr::codeGen(CodeGenContext& context)
 {
@@ -998,6 +1008,7 @@ NCondExpr::codeGen(CodeGenContext& context)
 	BasicBlock *lhs_else;
 	BasicBlock *lhs_end;
 	BasicBlock *orig_block;
+	BasicBlock *orig_end_block;
 	PHINode *phi_node;
 
 	if (context.isLValue()) {
@@ -1009,6 +1020,7 @@ NCondExpr::codeGen(CodeGenContext& context)
 	}
 
 	orig_block = context.currentBlock();
+	orig_end_block = context.current_end_block;
 
 	lhs_true = BasicBlock::Create(getGlobalContext(), "", orig_block->getParent(),
 								  context.current_end_block);
@@ -1017,6 +1029,7 @@ NCondExpr::codeGen(CodeGenContext& context)
 	lhs_end = BasicBlock::Create(getGlobalContext(), "", orig_block->getParent(),
 								 context.current_end_block);
 
+	context.current_end_block = lhs_end;
 	context.builder->CreateCondBr(cond_val, lhs_true, lhs_else);
 
 	setBlock(lhs_true);
@@ -1027,13 +1040,18 @@ NCondExpr::codeGen(CodeGenContext& context)
 	rhs = if_else.codeGen(context);
 	context.builder->CreateBr(lhs_end);
 
+	if (!context.currentBlock()->getTerminator()) {
+		context.builder->CreateBr(lhs_end);
+	}
 	castCompare(context, lhs_true, lhs, lhs_else, rhs);
 	setBlock(lhs_end);
 	
 	phi_node = context.builder->CreatePHI(lhs->getType(), 2);
 
-	phi_node->addIncoming(lhs, lhs_true);
-	phi_node->addIncoming(rhs, lhs_else);
+	phi_node->addIncoming(lhs, _lhs_getParent_O2_);
+	phi_node->addIncoming(rhs, _rhs_getParent_O2_);
+
+	context.current_end_block = orig_end_block;
 
 	return CGValue(phi_node);
 }

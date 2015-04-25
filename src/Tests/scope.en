@@ -10,7 +10,7 @@ char getch() // unbuffered
 
 int main()
 {
-	getch();
+	//getch();
 	int p = 10;
 	int i = (1, p++, p--);
 
@@ -25,6 +25,14 @@ int main()
 	*&ptr[0] = "index-0";
 
 	printf("%s, %s\n", ptr[0], ptr[1]);
+
+	//if (0) {
+		//int in_scope = 0;
+	//}
+	//printf("%d\n", in_scope);
+	int bits = 12;
+	bits = bits > 32 ? (bits / 32 + (bits % 32 == 0 ? 0 : 1)) * 32 : 32;
+	printf("%d\n", bits);
 
 	return 0;
 }
