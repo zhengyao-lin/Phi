@@ -86,12 +86,12 @@
 %type <declarator_list> declarator_list
 %type <param_declaration> param_declaration
 %type <block> statement_list block in_namespace_declaration_list
-%type <statement> statement external_declaration declarations variable_declaration
+%type <statement> statement external_declaration declarations variable_declaration field_variable_declaration
 				   function_definition ret_statement delegate_declaration
 				   struct_declaration union_declaration typedef_declaration
 				   selection_statement labeled_statement jump_statement
 				   namespace_declaration in_namespace_declaration
-				   expression_statement iteration_statement
+				   expression_statement iteration_statement //struct_or_union_declaration
 %type <token> assign_op unary_op self_assign_op
 %type <dim>	ptr_dim
 
@@ -377,21 +377,50 @@ delegate_declaration
 	}
 	;
 
+field_variable_declaration
+	: variable_declaration
+	| struct_declaration
+	{
+		DeclSpecifier *decl_spec = new DeclSpecifier();
+		decl_spec->push_back(new NTypeSpecifier(*new NStructType((NStructDecl*)$1)));
+
+		DeclaratorList *decl_list = new DeclaratorList();
+		decl_list->push_back(new IdentifierDeclarator(*new NIdentifier(*new std::string("."))));
+
+		$$ = new NVariableDecl(*decl_spec, decl_list);
+	}
+	| union_declaration
+	{
+		DeclSpecifier *decl_spec = new DeclSpecifier();
+		decl_spec->push_back(new NTypeSpecifier(*new NUnionType((NUnionDecl*)$1)));
+
+		DeclaratorList *decl_list = new DeclaratorList();
+		decl_list->push_back(new IdentifierDeclarator(*new NIdentifier(*new std::string("."))));
+
+		$$ = new NVariableDecl(*decl_spec, decl_list);
+	}
+	;
+
 fields_declaration
 	: /* Blank */
 	{
 		$$ = new VariableList();
 	}
-	| variable_declaration TSEMICOLON
+	| field_variable_declaration TSEMICOLON
 	{
 		$$ = new VariableList();
 		$$->push_back($<variable_declaration>1);
 	}
-	| fields_declaration variable_declaration TSEMICOLON
+	| fields_declaration field_variable_declaration TSEMICOLON
 	{
 		$1->push_back($<variable_declaration>2);
 	}
 	;
+
+ /*struct_or_union_declaration
+	: struct_declaration
+	| union_declaration
+	;*/
 
 struct_declaration
 	: TSTRUCT identifier TLBRACE
@@ -410,7 +439,7 @@ struct_declaration
 	  fields_declaration
 	  TRBRACE
 	{
-		$$ = new NStructDecl(*new NIdentifier(*new std::string(".anon")),
+		$$ = new NStructDecl(*new NIdentifier(*new std::string(".")),
 							 $3);
 		SETLINE($$);
 	}
@@ -433,7 +462,7 @@ union_declaration
 	  fields_declaration
 	  TRBRACE
 	{
-		$$ = new NUnionDecl(*new NIdentifier(*new std::string(".anon")),
+		$$ = new NUnionDecl(*new NIdentifier(*new std::string(".")),
 							$3);
 		SETLINE($$);
 	}
@@ -500,7 +529,7 @@ bitfield_type
 		if ($1->name.compare("int")) {
 			ASTERR_Bit_Field_With_Non_Int_Type();
 			ASTERR_setLineNumber();
-			ASTERR_showAllMsg();			
+			ASTERR_showAllMsg();
 		}
 
 		$$ = new NBitFieldType((unsigned)atol($3->c_str()));

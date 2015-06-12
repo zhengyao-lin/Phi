@@ -28,6 +28,7 @@
 
 #define STRUCT_PREFIX ("struct.")
 #define UNION_PREFIX ("union.")
+#define ANON_POSTFIX ("anon")
 
 using namespace llvm;
 
@@ -39,7 +40,7 @@ TypeInfoTable initializeBasicType(CodeGenContext& context);
 CGValue codeGenLoadValue(CodeGenContext& context, Value *V);
 uint64_t getConstantIntExprJIT(Constant *const_expr);
 
-typedef std::map<std::string, unsigned> FieldMap;
+typedef std::map<std::string, int> FieldMap;
 typedef std::map<std::string, Type *> UnionFieldMap;
 
 typedef struct {

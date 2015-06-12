@@ -155,7 +155,7 @@ NVariableDecl::codeGen(CodeGenContext& context)
 
 				var = new GlobalVariable(*context.module, tmp_type, false,
 										 specifiers->linkage,
-										 init_value, context.formatName(decl_info_tmp->id->name)); 
+										 init_value, context.formatName(decl_info_tmp->id->name));
 
 				if (decl_info_tmp->expr) {
 					Value *tmp_val;
@@ -181,7 +181,7 @@ NVariableDecl::codeGen(CodeGenContext& context)
 																					  getLine(this), getFile(this)));
 						var->setInitializer(init_value);
 					}
-					
+
 					/* if (!(init_value = dyn_cast<Constant>(tmp_val))) {
 						CGERR_External_Variable_Is_Not_Constant(context);
 						CGERR_setLineNum(context, getLine(this), getFile(this));
@@ -221,6 +221,7 @@ CGValue
 NStructDecl::codeGen(CodeGenContext& context)
 {
 	unsigned i;
+	bool isAnon = false;
 	VariableList::const_iterator var_it;
 	DeclaratorList::const_iterator decl_it;
 	DeclInfo *decl_info_tmp;
@@ -229,9 +230,17 @@ NStructDecl::codeGen(CodeGenContext& context)
 	StructType *struct_type;
 	Type *tmp_type;
 	DeclSpecifier::const_iterator decl_spec_it;
-	string real_name = STRUCT_PREFIX + context.formatName(id.name);
+	string real_name;
 
-	if (context.getType(real_name)) {
+	if (!id.name.compare(".")) {
+		isAnon = true;
+		delete &id.name;
+		id.name = *new string(ANON_POSTFIX);
+	}
+	real_name = STRUCT_PREFIX + context.formatName(id.name);
+
+	if (context.getType(real_name)
+		&& !isAnon) {
 		if (context.getStruct(real_name)
 			&& fields) { // redefinition
 			CGERR_Redefinition_Of_Struct(context, id.name.c_str());
@@ -240,7 +249,8 @@ NStructDecl::codeGen(CodeGenContext& context)
 			return CGValue();
 		}
 		struct_type = dyn_cast<StructType>(context.getType(real_name));
-	} if (context.getType(STRUCT_PREFIX + id.name)) {
+	} else if (context.getType(STRUCT_PREFIX + id.name)
+			   && !isAnon) {
 		real_name = STRUCT_PREFIX + id.name;
 		if (context.getStruct(real_name)
 			&& fields) { // redefinition
@@ -252,7 +262,7 @@ NStructDecl::codeGen(CodeGenContext& context)
 		struct_type = dyn_cast<StructType>(context.getType(real_name));
 	} else {
 		struct_type = StructType::create(getGlobalContext(), real_name);
-		context.setType(real_name, struct_type);
+		context.setType(isAnon ? "." : real_name, struct_type);
 	}
 
 	if (fields) {
@@ -292,6 +302,7 @@ CGValue
 NUnionDecl::codeGen(CodeGenContext& context)
 {
 	unsigned i;
+	bool isAnon = false;
 	VariableList::const_iterator var_it;
 	DeclaratorList::const_iterator decl_it;
 	DeclInfo *decl_info_tmp;
@@ -301,9 +312,17 @@ NUnionDecl::codeGen(CodeGenContext& context)
 	Type *tmp_type;
 	Type *main_type;
 	DeclSpecifier::const_iterator decl_spec_it;
-	string real_name = UNION_PREFIX + context.formatName(id.name);
+	string real_name;
 
-	if (context.getType(real_name)) {
+	if (!id.name.compare(".")) {
+		isAnon = true;
+		delete &id.name;
+		id.name = *new string(ANON_POSTFIX);
+	}
+	real_name = UNION_PREFIX + context.formatName(id.name);
+
+	if (context.getType(real_name)
+		&& !isAnon) {
 		if (context.getUnion(real_name)
 			&& fields) { // redefinition
 			CGERR_Redefinition_Of_Union(context, id.name.c_str());
@@ -312,7 +331,8 @@ NUnionDecl::codeGen(CodeGenContext& context)
 			return CGValue();
 		}
 		union_type = dyn_cast<StructType>(context.getType(real_name));
-	} if (context.getType(UNION_PREFIX + id.name)) {
+	} else if (context.getType(UNION_PREFIX + id.name)
+			   && !isAnon) {
 		real_name = UNION_PREFIX + id.name;
 		if (context.getUnion(real_name)
 			&& fields) { // redefinition
@@ -324,7 +344,7 @@ NUnionDecl::codeGen(CodeGenContext& context)
 		union_type = dyn_cast<StructType>(context.getType(real_name));
 	} else {
 		union_type = StructType::create(getGlobalContext(), real_name);
-		context.setType(real_name, union_type);
+		context.setType(isAnon ? "." : real_name, union_type);
 	}
 
 	if (fields) {
