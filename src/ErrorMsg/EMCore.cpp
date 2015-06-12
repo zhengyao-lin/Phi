@@ -275,4 +275,24 @@ ErrorMessage::tmpError(string msg)
 	return;
 }
 
+void
+ErrorMessage::tmpWarning(string msg)
+{
+	ErrorInfo *warn = new ErrorInfo(ErrorInfo::Warning, true,
+									ErrorInfo::NoAct, msg);
+	warn->doPrint(cerr);
+	delete warn;
+	return;
+}
+
+void
+ErrorMessage::tmpNote(string msg)
+{
+	ErrorInfo *note = new ErrorInfo(ErrorInfo::Note, true,
+									ErrorInfo::NoAct, msg);
+	note->doPrint(cerr);
+	delete note;
+	return;
+}
+
 

@@ -66,6 +66,13 @@ IOSetting::doPreprocess(string file_path)
 {
 	string tmp_file_path = getTempFilePath();
 	string cmd = "gcc -x c " + file_path + " -E >> " + tmp_file_path;
+
+	if (!isFileExist(file_path)) {
+		ErrorMessage::tmpError("Cannot find source file: " + file_path);
+		delete this;
+		exit(0);
+	}
+
 	tmp_file_paths->push_back(tmp_file_path);
 	int status = system(cmd.c_str());
 	if (status) {
@@ -144,13 +151,13 @@ IOSetting::isIROutput()
 string
 IOSetting::getFileName(string file)
 {
-	int i;
-	for (i = file.length() - 1; i >= 0; i--) {
-		if (file[i] == '.') {
-			break;
-		}
-	}
-	return file.substr(0, i);
+	int i, j;
+
+	for (i = file.length() - 1; i && file[i] != '.'; i--);
+	for (j = 0; j < file.length() && file[j] != '/'; j++);
+	j = (j == file.length() - 1 ? 0 : j + 1);
+
+	return file.substr(j, i - j);
 }
 
 string
@@ -242,10 +249,15 @@ IOSetting::doOutput(Module *mod)
 		cout << getObject() << endl;
 		string cmd = "gcc " + tmp_output_name + " -o "
 					 + (getObject().empty()
-						? getFilePath(input_file) + "/a.out"
+						? "a.out"
 						: getObject());
 		tmp_file_paths->push_back(tmp_output_name);
 		int status = system(cmd.c_str());
+
+		if (isFileExist(tmp_output_name)) {
+			remove(tmp_output_name.c_str());
+		}
+
 		if (status) {
 			delete this;
 			exit(status);

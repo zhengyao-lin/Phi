@@ -114,6 +114,10 @@ public:
 
 	static void
 	tmpError(string msg);
+	static void
+	tmpWarning(string msg);
+	static void
+	tmpNote(string msg);
 };
 
 #endif

@@ -102,180 +102,36 @@ public:
 	}
 
 	string
-	getRandomString(int length)
-	{
-		int flag, i;
-		string ret_str;
-		srand(clock());
-	  
-		for (i = 0; i < length - 1; i++)
-		{
-			flag = rand() % 3;
-			switch (flag)
-			{
-			    case 0:
-			        ret_str += 'A' + rand() % 26;
-			        break;
-			    case 1:
-			        ret_str += 'a' + rand() % 26;
-			        break;
-			    case 2:
-			        ret_str += '0' + rand() % 10;
-			        break;
-			    default:
-			        ret_str += 'x';
-			        break;
-			}
-		}
-		return ret_str;
-	}
+	getRandomString(int length);
 
-	void setGlobalConstructor()
-	{
-		if (global_constructor) {
-			pushBlock(&global_constructor->back());
-		} else {
-			FunctionType *ftype = FunctionType::get(builder->getVoidTy(),
-													ArrayRef<Type*>(), false);
-			global_constructor = Function::Create(ftype, GlobalValue::ExternalLinkage,
-												  ".global_ctor." + getRandomString(16), module);
-			pushBlock(BasicBlock::Create(getGlobalContext(), "", global_constructor, 0));
-		}
-		builder->SetInsertPoint(currentBlock());
-		return;
-	}
+	void setGlobalConstructor();
 
-	void terminateGlobalConstructor()
-	{
-		setGlobalConstructor();
-		builder->CreateRetVoid();
-		popAllBlock();
-		return;
-	}
+	void terminateGlobalConstructor();
 
     void generateCode(NBlock& root);
     GenericValue runCode();
 
-    std::map<std::string, Value*>& getTopLocals() {
-        return blocks.top()->locals;
-    }
-    void setTopLocals(std::map<std::string, Value*> locals) {
-		if (currentBlock()) {
-        	blocks.top()->locals = locals;
-		}
-		return;
-    }
-    std::map<std::string, Value*> copyTopLocals() {
-		if (currentBlock()) {
-        	return blocks.top()->locals;
-		}
-		return *new std::map<std::string, Value*>();
-    }
-    std::map<std::string, Value*>& getGlobals() {
-        return globals;
-    }
-	BasicBlock *getLabel(std::string name) {
-		if (labels.find(name) == labels.end()) {
-			return NULL;
-		}
-		return labels[name];
-	}
+    std::map<std::string, Value*>& getTopLocals();
 
-	FieldMap *getStruct(std::string name) {
-		if (currentBlock()
-			&& blocks.top()->structs.find(formatName(name)) != blocks.top()->structs.end()) {
-			return &blocks.top()->structs[formatName(name)];
-		}
+    void setTopLocals(std::map<std::string, Value*> locals);
 
-		if (currentBlock()
-			&& blocks.top()->structs.find(name) != blocks.top()->structs.end()) {
-			return &blocks.top()->structs[name];
-		}
+    std::map<std::string, Value*> copyTopLocals();
 
-		if (structs.find(formatName(name)) != structs.end()) {
-			return &structs[formatName(name)];
-		}
+    std::map<std::string, Value*>& getGlobals();
 
-		if (structs.find(name) != structs.end()) {
-			return &structs[name];
-		}
+	BasicBlock *getLabel(std::string name);
 
-		return NULL;
-	}
+	FieldMap *getStruct(std::string name);
 
-	void setStruct(std::string name, FieldMap map) {
-		if (currentBlock()) {
-			blocks.top()->structs[name] = map;
-		} else {
-			structs[name] = map;
-		}
+	void setStruct(std::string name, FieldMap map);
 
-		return;
-	}
+	UnionFieldMap *getUnion(std::string name);
 
-	UnionFieldMap *getUnion(std::string name) {
-		if (currentBlock()
-			&& blocks.top()->unions.find(formatName(name)) != blocks.top()->unions.end()) {
-			return &blocks.top()->unions[formatName(name)];
-		}
+	void setUnion(std::string name, UnionFieldMap map);
 
-		if (currentBlock()
-			&& blocks.top()->unions.find(name) != blocks.top()->unions.end()) {
-			return &blocks.top()->unions[name];
-		}
+	Type *getType(std::string name);
 
-		if (unions.find(formatName(name)) != unions.end()) {
-			return &unions[formatName(name)];
-		}
-
-		if (unions.find(name) != unions.end()) {
-			return &unions[name];
-		}
-
-		return NULL;
-	}
-
-	void setUnion(std::string name, UnionFieldMap map) {
-		if (currentBlock()) {
-			blocks.top()->unions[name] = map;
-		} else {
-			unions[name] = map;
-		}
-
-		return;
-	}
-
-	Type *getType(std::string name) {
-		if (currentBlock()
-			&& blocks.top()->local_types.find(formatName(name)) != blocks.top()->local_types.end()) {
-			return blocks.top()->local_types[formatName(name)];
-		}
-
-		if (currentBlock()
-			&& blocks.top()->local_types.find(name) != blocks.top()->local_types.end()) {
-			return blocks.top()->local_types[name];
-		}
-
-		if (types.find(formatName(name)) != types.end()) {
-			return types[formatName(name)];
-		}
-
-		if (types.find(name) != types.end()) {
-			return types[name];
-		}
-
-		return NULL;
-	}
-
-	void setType(std::string name, Type *type) {
-		if (currentBlock()) {
-			blocks.top()->local_types[name] = type;
-		} else {
-			types[name] = type;
-		}
-
-		return;
-	}
+	void setType(std::string name, Type *type);
 
 	inline const std::string
 	formatName(const std::string &name)
@@ -283,86 +139,26 @@ public:
 		return current_namespace + name;
 	}
 
-	void setLabel(std::string name, BasicBlock *block) {
-		labels[name] = block;
-		return;
-	}
-    BasicBlock *currentBlock() {
-		if (blocks.size()) {
-        	return blocks.top()->block;
-		}
-		return NULL;
-    }
-	BlockLocalContext backupLocalContext() {
-		BlockLocalContext ret;
+	void setLabel(std::string name, BasicBlock *block);
 
-		if (currentBlock()) {
-			ret.local_types = blocks.top()->local_types;
-			ret.locals = blocks.top()->locals;
-			ret.structs = blocks.top()->structs;
-			ret.unions = blocks.top()->unions;
-		}
+    BasicBlock *currentBlock();
 
-		return ret;
-	}
-	void restoreLocalContext(BlockLocalContext context) {
-		if (currentBlock()) {
-			blocks.top()->local_types = context.local_types;
-			blocks.top()->locals = context.locals;
-			blocks.top()->structs = context.structs;
-			blocks.top()->unions = context.unions;
-		}
+	BlockLocalContext backupLocalContext();
 
-		return;
-	}
-    TerminatorInst *currentTerminator() {
-		if (blocks.size()) {
-        	return blocks.top()->block->getTerminator();
-		}
-		return NULL;
-    }
-	bool isLValue() {
-		return is_lvalue;
-	}
-	void setLValue() {
-		is_lvalue = true;
-		return;
-	}
-	void resetLValue() {
-		is_lvalue = false;
-		return;
-	}
-    void pushBlock(BasicBlock *block) {
-		CodeGenBlock *newb = new CodeGenBlock();
+	void restoreLocalContext(BlockLocalContext context);
 
-        newb->returnValue = NULL;
-        newb->block = block;
-		if (currentBlock()) { // inherit locals
-			BlockLocalContext context = backupLocalContext();
-			blocks.push(newb);
-			restoreLocalContext(context);
+    TerminatorInst *currentTerminator();
 
-			return;
-		}
+	bool isLValue();
+	void setLValue();
+	void resetLValue();
 
-		blocks.push(newb);
-		return;
-    }
-    void popBlock() {
-        CodeGenBlock *top = blocks.top();
-        blocks.pop();
-        delete top;
-    }
-	void popAllBlock() {
-		while (currentBlock()) popBlock();
-		return;
-	}
-    void setCurrentReturnValue(Value *value) {
-        blocks.top()->returnValue = value;
-    }
-    Value* getCurrentReturnValue() {
-        return blocks.top()->returnValue;
-    }
+    void pushBlock(BasicBlock *block);
+    void popBlock();
+	void popAllBlock();
+
+    void setCurrentReturnValue(Value *value);
+    Value* getCurrentReturnValue();
 };
 
 #endif
